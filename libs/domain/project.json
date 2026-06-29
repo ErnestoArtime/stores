@@ -1,0 +1,15 @@
+{
+  "name": "domain",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/domain/src",
+  "projectType": "library",
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "libs/domain/vite.config.ts"
+      }
+    }
+  },
+  "tags": ["scope:shared", "type:domain"]
+}
