@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+    { "path": "./apps/storefront/tsconfig.app.json" },
+    { "path": "./apps/admin/tsconfig.app.json" },
+    { "path": "./libs/domain/tsconfig.lib.json" },
+    { "path": "./libs/data-access/tsconfig.lib.json" },
+    { "path": "./libs/ui/tsconfig.lib.json" }
+  ]
+}
