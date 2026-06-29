@@ -1,0 +1,64 @@
+{
+  "name": "storefront",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/storefront/src",
+  "prefix": "stores",
+  "targets": {
+    "build": {
+      "executor": "@angular-devkit/build-angular:application",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/storefront",
+        "index": "apps/storefront/src/index.html",
+        "browser": "apps/storefront/src/main.ts",
+        "polyfills": ["zone.js"],
+        "tsConfig": "apps/storefront/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/storefront/src/assets",
+            "output": "assets"
+          }
+        ],
+        "styles": ["apps/storefront/src/theme/variables.scss", "apps/storefront/src/styles.scss"],
+        "scripts": []
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "700kb",
+              "maximumError": "1.2mb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "@angular-devkit/build-angular:dev-server",
+      "configurations": {
+        "production": {
+          "buildTarget": "storefront:build:production"
+        },
+        "development": {
+          "buildTarget": "storefront:build:development"
+        }
+      },
+      "defaultConfiguration": "development",
+      "options": {
+        "port": 4200
+      }
+    }
+  },
+  "tags": ["scope:customer", "type:app"]
+}
