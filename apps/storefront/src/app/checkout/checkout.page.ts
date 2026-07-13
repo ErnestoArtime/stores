@@ -18,7 +18,7 @@ import {
   IonTitle,
   IonToolbar
 } from '@ionic/angular/standalone';
-import { AuthService, CartService, CatalogFacade } from '@stores/data-access';
+import { AuthService, CartService, CatalogFacade, SupabaseClientService } from '@stores/data-access';
 import { MoneyPipe } from '@stores/ui';
 
 @Component({
@@ -105,18 +105,18 @@ import { MoneyPipe } from '@stores/ui';
             <ion-item>
               <ion-label position="stacked">Ventana de entrega</ion-label>
               <ion-select [(ngModel)]="deliveryWindow" name="window" placeholder="Seleccionar ventana">
-                <ion-select-option value="today_12_14">Hoy 12:00 - 14:00</ion-select-option>
-                <ion-select-option value="today_18_20">Hoy 18:00 - 20:00</ion-select-option>
-                <ion-select-option value="tomorrow_09_12">Manana 09:00 - 12:00</ion-select-option>
+                <ion-select-option *ngFor="let window of facade.tenant().settings.deliveryWindowOptions" [value]="window">
+                  {{ window }}
+                </ion-select-option>
               </ion-select>
             </ion-item>
 
             <ion-item>
               <ion-label position="stacked">Metodo de pago</ion-label>
               <ion-select [(ngModel)]="paymentMethod" name="payment" placeholder="Seleccionar metodo">
-                <ion-select-option value="cash">Efectivo</ion-select-option>
-                <ion-select-option value="transfer">Transferencia</ion-select-option>
-                <ion-select-option value="pos">POS</ion-select-option>
+                <ion-select-option *ngFor="let method of facade.tenant().settings.paymentMethods" [value]="method">
+                  {{ method | titlecase }}
+                </ion-select-option>
               </ion-select>
             </ion-item>
 
@@ -200,14 +200,27 @@ export class CheckoutPage {
   readonly facade = inject(CatalogFacade);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly supabase = inject(SupabaseClientService);
 
   customerName = '';
   customerPhone = '';
   deliveryAddress = '';
   deliveryZone = '';
   deliveryWindow = '';
-  paymentMethod = 'cash' as 'cash' | 'transfer' | 'pos';
+  paymentMethod = 'cash';
   couponCode = '';
+
+  constructor() {
+    const settings = this.facade.tenant().settings;
+    const windows = settings.deliveryWindowOptions;
+    const methods = settings.paymentMethods;
+    if (windows.length > 0) {
+      this.deliveryWindow = windows[0];
+    }
+    if (methods.length > 0) {
+      this.paymentMethod = methods[0];
+    }
+  }
 
   readonly submitting = signal(false);
   readonly error = signal('');
@@ -278,7 +291,7 @@ export class CheckoutPage {
       coupon_code: this.couponCode || null
     };
 
-    if (!this.facade['supabase'].configured) {
+    if (!this.supabase.configured) {
       const code = `ORD-${Date.now().toString(36).toUpperCase()}`;
       this.orderCode.set(code);
       this.orderCreated.set(true);
@@ -288,7 +301,7 @@ export class CheckoutPage {
     }
 
     try {
-      const { data, error } = await this.facade['supabase'].client.functions.invoke('create-order', {
+      const { data, error } = await this.supabase.client.functions.invoke('create-order', {
         body: orderPayload
       });
 

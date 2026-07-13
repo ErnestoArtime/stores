@@ -8,6 +8,40 @@ export interface TenantBranding {
   heroImageUrl: string;
 }
 
+export interface TenantFeatures {
+  delivery: boolean;
+  loyalty: boolean;
+  promotions: boolean;
+  import: boolean;
+  dispatch: boolean;
+  analytics: boolean;
+}
+
+export interface TenantLimits {
+  maxProducts: number;
+  maxStores: number;
+  maxOrdersPerMonth: number;
+  maxStaff: number;
+}
+
+export interface BusinessHours {
+  open: string;
+  close: string;
+  days: number[];
+}
+
+export interface TenantSettings {
+  businessHours: BusinessHours;
+  deliveryWindowOptions: string[];
+  paymentMethods: string[];
+}
+
+export interface TenantBilling {
+  plan: TenantPlan;
+  status: 'active' | 'past_due' | 'cancelled' | 'trialing';
+  currentPeriodEnd?: string;
+}
+
 export interface Tenant {
   id: string;
   slug: string;
@@ -18,6 +52,10 @@ export interface Tenant {
   supportPhone: string;
   supportWhatsapp: string;
   branding: TenantBranding;
+  features: TenantFeatures;
+  limits: TenantLimits;
+  settings: TenantSettings;
+  billing: TenantBilling;
 }
 
 export interface StaffProfile {

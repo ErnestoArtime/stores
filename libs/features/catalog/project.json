@@ -1,0 +1,8 @@
+{
+  "name": "features-catalog",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/features/catalog/src",
+  "projectType": "library",
+  "targets": {},
+  "tags": ["scope:features", "type:data-access"]
+}

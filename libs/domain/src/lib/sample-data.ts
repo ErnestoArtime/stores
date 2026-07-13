@@ -16,6 +16,29 @@ export const demoTenant: Tenant = {
     accentColor: '#f59e0b',
     heroImageUrl:
       'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1800&q=80'
+  },
+  features: {
+    delivery: true,
+    loyalty: true,
+    promotions: true,
+    import: true,
+    dispatch: true,
+    analytics: true
+  },
+  limits: {
+    maxProducts: 1000,
+    maxStores: 10,
+    maxOrdersPerMonth: 5000,
+    maxStaff: 20
+  },
+  settings: {
+    businessHours: { open: '08:00', close: '20:00', days: [1, 2, 3, 4, 5, 6] },
+    deliveryWindowOptions: ['Hoy 12:00 - 14:00', 'Hoy 18:00 - 20:00', 'Manana 09:00 - 12:00'],
+    paymentMethods: ['cash', 'transfer', 'pos']
+  },
+  billing: {
+    plan: 'growth',
+    status: 'active'
   }
 };
 

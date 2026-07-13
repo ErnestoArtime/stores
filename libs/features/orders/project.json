@@ -1,0 +1,8 @@
+{
+  "name": "features-orders",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/features/orders/src",
+  "projectType": "library",
+  "targets": {},
+  "tags": ["scope:features", "type:data-access"]
+}

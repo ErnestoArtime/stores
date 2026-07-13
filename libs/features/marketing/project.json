@@ -1,0 +1,8 @@
+{
+  "name": "features-marketing",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/features/marketing/src",
+  "projectType": "library",
+  "targets": {},
+  "tags": ["scope:features", "type:data-access"]
+}

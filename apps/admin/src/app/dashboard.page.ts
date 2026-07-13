@@ -1,72 +1,47 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { CatalogFacade } from '@stores/data-access';
+import { AdminShellComponent, PageHeaderComponent } from '@stores/shared/shell';
 import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
 
 @Component({
   selector: 'admin-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, MoneyPipe],
+  imports: [CommonModule, MoneyPipe, AdminShellComponent, PageHeaderComponent],
   template: `
-    <div class="layout">
-      <aside class="sidebar">
-        <div class="brand">
-          <span>MC</span>
-          <div>
-            <strong>{{ facade.tenant().name }}</strong>
-            <small>Operacion comercial</small>
-          </div>
+    <stores-admin-shell [tenant]="facade.tenant()">
+      <stores-page-header section="Dashboard" title="Control diario de tienda y delivery" [hasActions]="true">
+        <div actions>
+          <button type="button">Nuevo producto</button>
+          <button type="button" class="primary">Crear pedido</button>
         </div>
-        <nav>
-          <a routerLink="/dashboard" class="active">Panel</a>
-          <a routerLink="/catalog/products">Productos</a>
-          <a routerLink="/catalog/categories">Categorias</a>
-          <a routerLink="/stores">Sucursales</a>
-          <a routerLink="/inventory">Inventario</a>
-          <a routerLink="/dispatch">Delivery</a>
-          <a routerLink="/customers">Clientes</a>
-          <a routerLink="/settings">Configuracion</a>
-        </nav>
-      </aside>
-
-      <main>
-        <header class="topbar">
-          <div>
-            <p>Dashboard</p>
-            <h1>Control diario de tienda y delivery</h1>
-          </div>
-          <div class="actions">
-            <button type="button">Nuevo producto</button>
-            <button type="button" class="primary">Crear pedido</button>
-          </div>
-        </header>
+      </stores-page-header>
 
         <section class="metrics">
           <article>
             <span>Ventas hoy</span>
-            <strong>{{ facade.summary.todayRevenue | storeMoney: facade.tenant().currency }}</strong>
+            <strong>{{ facade.summary().todayRevenue | storeMoney: facade.tenant().currency }}</strong>
             <small>+14% contra ayer</small>
           </article>
           <article>
             <span>Pedidos abiertos</span>
-            <strong>{{ facade.summary.openOrders }}</strong>
+            <strong>{{ facade.summary().openOrders }}</strong>
             <small>3 listos para despacho</small>
           </article>
           <article>
             <span>Productos activos</span>
-            <strong>{{ facade.summary.activeProducts }}</strong>
-            <small>{{ facade.summary.lowStockProducts }} en bajo stock</small>
+            <strong>{{ facade.summary().activeProducts }}</strong>
+            <small>{{ facade.summary().lowStockProducts }} en bajo stock</small>
           </article>
           <article>
             <span>SLA delivery</span>
-            <strong>{{ facade.summary.deliverySlaMinutes }} min</strong>
+            <strong>{{ facade.summary().deliverySlaMinutes }} min</strong>
             <small>Promedio movil</small>
           </article>
           <article>
             <span>Ticket promedio</span>
-            <strong>{{ facade.summary.averageOrderValue | storeMoney: facade.tenant().currency }}</strong>
-            <small>{{ facade.summary.repeatCustomerRate }}% clientes recurrentes</small>
+            <strong>{{ facade.summary().averageOrderValue | storeMoney: facade.tenant().currency }}</strong>
+            <small>{{ facade.summary().repeatCustomerRate }}% clientes recurrentes</small>
           </article>
         </section>
 
@@ -164,14 +139,14 @@ import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
                 <h2>Rutas activas y mensajeros</h2>
               </div>
             </div>
-            <div class="courier" *ngFor="let courier of facade.couriers">
+            <div class="courier" *ngFor="let courier of facade.couriers()">
               <div>
                 <strong>{{ courier.fullName }}</strong>
                 <small>{{ courier.currentZone }} · {{ courier.phone }}</small>
               </div>
               <b>{{ courier.openOrders }}</b>
             </div>
-            <div class="route" *ngFor="let route of facade.routes">
+            <div class="route" *ngFor="let route of facade.routes()">
               <h3>{{ route.zoneName }}</h3>
               <ol>
                 <li *ngFor="let stop of route.stops">
@@ -197,7 +172,7 @@ import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
                 <small>{{ promo.description }}</small>
               </div>
             </div>
-            <div class="segment" *ngFor="let segment of facade.segments">
+            <div class="segment" *ngFor="let segment of facade.segments()">
               <strong>{{ segment.name }}</strong>
               <span>{{ segment.customerCount }} clientes</span>
               <small>{{ segment.criteria }}</small>
@@ -251,8 +226,7 @@ import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
             </div>
           </article>
         </section>
-      </main>
-    </div>
+    </stores-admin-shell>
   `,
   styleUrl: './dashboard.page.scss'
 })

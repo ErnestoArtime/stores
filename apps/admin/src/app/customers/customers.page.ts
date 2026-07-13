@@ -133,7 +133,7 @@ import { Promotion } from '@stores/domain';
             </div>
           </div>
           <div class="loyalty-list">
-            <div class="loyalty-card" *ngFor="let tier of facade.loyaltyTiers">
+            <div class="loyalty-card" *ngFor="let tier of facade.loyaltyTiers()">
               <strong>{{ tier.name }}</strong>
               <span>Gasto minimo: {{ tier.minimumSpend }}</span>
               <small>{{ tier.perks.join(' · ') }}</small>
@@ -149,7 +149,7 @@ import { Promotion } from '@stores/domain';
             </div>
           </div>
           <div class="segment-list">
-            <div class="segment-card" *ngFor="let segment of facade.segments">
+            <div class="segment-card" *ngFor="let segment of facade.segments()">
               <strong>{{ segment.name }}</strong>
               <span>{{ segment.customerCount }} clientes</span>
               <small>{{ segment.criteria }}</small>

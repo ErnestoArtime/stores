@@ -66,7 +66,7 @@ import { MoneyPipe } from '@stores/ui';
     </ion-header>
 
     <ion-content fullscreen="true">
-      <section class="hero" [style.background-image]="'linear-gradient(90deg, rgba(4,47,46,.88), rgba(15,118,110,.42)), url(' + facade.tenant().branding.heroImageUrl + ')'">
+      <section class="hero" [style.background-image]="'linear-gradient(90deg, color-mix(in srgb, var(--tenant-primary) 88%, transparent), color-mix(in srgb, var(--tenant-primary) 42%, transparent)), url(' + facade.tenant().branding.heroImageUrl + ')'">
         <div class="hero__copy">
           <p>Entrega hoy en La Habana</p>
           <h1>Compra de mercado, hogar y tiendas locales con delivery.</h1>
@@ -109,9 +109,9 @@ import { MoneyPipe } from '@stores/ui';
             <p>{{ promo.description }}</p>
           </article>
           <article>
-            <span>{{ facade.loyaltyTiers[1].name }}</span>
+            <span>{{ facade.loyaltyTiers()[1].name }}</span>
             <h3>Programa de puntos</h3>
-            <p>{{ facade.loyaltyTiers[1].perks.join(' · ') }}</p>
+            <p>{{ facade.loyaltyTiers()[1].perks.join(' · ') }}</p>
           </article>
         </section>
 

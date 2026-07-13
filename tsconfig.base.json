@@ -21,7 +21,13 @@
     "paths": {
       "@stores/domain": ["libs/domain/src/index.ts"],
       "@stores/data-access": ["libs/data-access/src/index.ts"],
-      "@stores/ui": ["libs/ui/src/index.ts"]
+      "@stores/ui": ["libs/ui/src/index.ts"],
+      "@stores/features/tenant": ["libs/features/tenant/src/index.ts"],
+      "@stores/features/catalog": ["libs/features/catalog/src/index.ts"],
+      "@stores/features/orders": ["libs/features/orders/src/index.ts"],
+      "@stores/features/dispatch": ["libs/features/dispatch/src/index.ts"],
+      "@stores/features/marketing": ["libs/features/marketing/src/index.ts"],
+      "@stores/shared/shell": ["libs/shared/shell/src/index.ts"]
     }
   },
   "angularCompilerOptions": {

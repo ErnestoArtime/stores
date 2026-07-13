@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { CatalogFacade, RealtimeService } from '@stores/data-access';
+import { CatalogFacade, RealtimeService, SupabaseClientService } from '@stores/data-access';
 import { Order } from '@stores/domain';
 import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
 
@@ -96,7 +96,7 @@ import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
             </div>
           </div>
           <div class="courier-list">
-            <div class="courier-card" *ngFor="let courier of facade.couriers">
+            <div class="courier-card" *ngFor="let courier of facade.couriers()">
               <div class="courier-info">
                 <strong>{{ courier.fullName }}</strong>
                 <small>{{ courier.phone }}</small>
@@ -119,7 +119,7 @@ import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
               <h2>Rutas activas de entrega</h2>
             </div>
           </div>
-          <div class="route-card" *ngFor="let route of facade.routes">
+          <div class="route-card" *ngFor="let route of facade.routes()">
             <h3>{{ route.zoneName }}</h3>
             <ol class="route-stops">
               <li *ngFor="let stop of route.stops" [class.completed]="stop.status === 'delivered'">
@@ -132,7 +132,7 @@ import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
               </li>
             </ol>
           </div>
-          <div class="empty" *ngIf="facade.routes.length === 0">No hay rutas activas.</div>
+          <div class="empty" *ngIf="facade.routes().length === 0">No hay rutas activas.</div>
         </section>
       </main>
     </div>
@@ -198,6 +198,7 @@ import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
 })
 export class DispatchPage implements OnInit, OnDestroy {
   readonly facade = inject(CatalogFacade);
+  private readonly supabase = inject(SupabaseClientService);
   private readonly realtime = inject(RealtimeService);
 
   readonly labels = ORDER_STATUS_LABELS;
@@ -224,14 +225,14 @@ export class DispatchPage implements OnInit, OnDestroy {
   }
 
   async updateStatus(order: Order, newStatus: Order['status']): Promise<void> {
-    if (!this.facade['supabase'].configured) {
+    if (!this.supabase.configured) {
       this.pendingOrders.update((orders) =>
         orders.map((o) => (o.id === order.id ? { ...o, status: newStatus } : o))
       );
       return;
     }
 
-    await this.facade['supabase'].client
+    await this.supabase.client
       .from('orders')
       .update({ status: newStatus })
       .eq('id', order.id);
