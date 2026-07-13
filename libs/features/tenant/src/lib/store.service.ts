@@ -42,4 +42,52 @@ export class StoreService {
       fulfillment: row.fulfillment || ['delivery']
     })));
   }
+
+  async createStore(store: Omit<StoreLocation, 'id'>): Promise<StoreLocation | null> {
+    if (!this.supabase.configured) {
+      return null;
+    }
+
+    const { data, error } = await this.supabase.client
+      .from('store_locations')
+      .insert({
+        tenant_id: store.tenantId,
+        name: store.name,
+        type: store.type,
+        address: store.address,
+        city: store.city,
+        municipality: store.municipality,
+        phone: store.phone,
+        open_now: store.openNow,
+        delivery_minutes: store.deliveryMinutes,
+        rating: store.rating,
+        cover_url: store.coverUrl,
+        fulfillment: store.fulfillment
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    const created: StoreLocation = {
+      id: data.id,
+      tenantId: data.tenant_id,
+      name: data.name,
+      type: data.type || 'mixed',
+      address: data.address,
+      city: data.city || '',
+      municipality: data.municipality,
+      phone: data.phone || '',
+      openNow: data.open_now,
+      deliveryMinutes: data.delivery_minutes,
+      rating: data.rating,
+      coverUrl: data.cover_url || '',
+      fulfillment: data.fulfillment || ['delivery']
+    };
+
+    this._stores.update((stores) => [...stores, created]);
+    return created;
+  }
 }

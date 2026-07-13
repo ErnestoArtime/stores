@@ -1,49 +1,25 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+
 import { CatalogFacade, RealtimeService, SupabaseClientService } from '@stores/data-access';
+import { AdminShellComponent, PageHeaderComponent } from '@stores/shared/shell';
 import { Order } from '@stores/domain';
 import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
 
 @Component({
   selector: 'admin-dispatch',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, MoneyPipe],
+  imports: [CommonModule, FormsModule, MoneyPipe, AdminShellComponent, PageHeaderComponent],
   template: `
-    <div class="layout">
-      <aside class="sidebar">
-        <div class="brand">
-          <span>MC</span>
-          <div>
-            <strong>{{ facade.tenant().name }}</strong>
-            <small>Operacion comercial</small>
-          </div>
-        </div>
-        <nav>
-          <a routerLink="/dashboard">Panel</a>
-          <a routerLink="/catalog/products">Productos</a>
-          <a routerLink="/catalog/categories">Categorias</a>
-          <a routerLink="/stores">Sucursales</a>
-          <a routerLink="/inventory">Inventario</a>
-          <a routerLink="/dispatch" class="active">Delivery</a>
-          <a routerLink="/customers">Clientes</a>
-          <a routerLink="/settings">Configuracion</a>
-        </nav>
-      </aside>
-
-      <main>
-        <header class="topbar">
-          <div>
-            <p>Despacho</p>
-            <h1>Gestion de pedidos y rutas</h1>
-          </div>
-          <div class="tabs">
+    <stores-admin-shell [tenant]="facade.tenant()">
+      <stores-page-header section="Despacho" title="Gestion de pedidos y rutas" [hasActions]="true">
+        <div actions class="tabs">
             <button [class.active]="activeTab() === 'orders'" (click)="activeTab.set('orders')">Pedidos</button>
             <button [class.active]="activeTab() === 'couriers'" (click)="activeTab.set('couriers')">Mensajeros</button>
             <button [class.active]="activeTab() === 'routes'" (click)="activeTab.set('routes')">Rutas</button>
           </div>
-        </header>
+        </stores-page-header>
 
         <section class="panel" *ngIf="activeTab() === 'orders'">
           <div class="panel__header">
@@ -134,24 +110,10 @@ import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
           </div>
           <div class="empty" *ngIf="facade.routes().length === 0">No hay rutas activas.</div>
         </section>
-      </main>
-    </div>
+    </stores-admin-shell>
   `,
   styles: [`
     :host { display: block; min-height: 100vh; color: #111827; background: #f3f4f6; }
-    .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
-    .sidebar { position: sticky; top: 0; height: 100vh; padding: 22px; color: white; background: #111827; }
-    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
-    .brand span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 8px; background: #f59e0b; color: #111827; font-weight: 900; }
-    .brand strong, .brand small { display: block; }
-    .brand small, nav a { color: #9ca3af; }
-    nav { display: grid; gap: 8px; }
-    nav a { padding: 11px 12px; border-radius: 8px; text-decoration: none; }
-    nav a.active { color: white; background: rgba(255, 255, 255, 0.12); }
-    main { display: grid; gap: 22px; padding: 24px; }
-    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    .topbar p { margin: 0 0 6px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; color: #6b7280; }
-    .topbar h1 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.45rem); }
     .tabs { display: flex; gap: 8px; }
     .tabs button { padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 8px; background: white; color: #6b7280; font-weight: 700; cursor: pointer; }
     .tabs button.active { background: #0f766e; color: white; border-color: #0f766e; }
@@ -193,7 +155,6 @@ import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
     .stop-info strong, .stop-info small { display: block; }
     .empty { padding: 32px; text-align: center; color: #6b7280; }
     a { text-decoration: none; color: inherit; }
-    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; } }
   `]
 })
 export class DispatchPage implements OnInit, OnDestroy {

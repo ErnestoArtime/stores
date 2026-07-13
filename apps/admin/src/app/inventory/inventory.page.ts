@@ -1,44 +1,19 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+
 import { CatalogFacade } from '@stores/data-access';
+import { AdminShellComponent, PageHeaderComponent } from '@stores/shared/shell';
 import { Product } from '@stores/domain';
 import { MoneyPipe } from '@stores/ui';
 
 @Component({
   selector: 'admin-inventory',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, MoneyPipe],
+  imports: [CommonModule, FormsModule, MoneyPipe, AdminShellComponent, PageHeaderComponent],
   template: `
-    <div class="layout">
-      <aside class="sidebar">
-        <div class="brand">
-          <span>MC</span>
-          <div>
-            <strong>{{ facade.tenant().name }}</strong>
-            <small>Operacion comercial</small>
-          </div>
-        </div>
-        <nav>
-          <a routerLink="/dashboard">Panel</a>
-          <a routerLink="/catalog/products">Productos</a>
-          <a routerLink="/catalog/categories">Categorias</a>
-          <a routerLink="/stores">Sucursales</a>
-          <a routerLink="/inventory" class="active">Inventario</a>
-          <a routerLink="/dispatch">Delivery</a>
-          <a routerLink="/customers">Clientes</a>
-          <a routerLink="/settings">Configuracion</a>
-        </nav>
-      </aside>
-
-      <main>
-        <header class="topbar">
-          <div>
-            <p>Operaciones</p>
-            <h1>Inventario</h1>
-          </div>
-        </header>
+    <stores-admin-shell [tenant]="facade.tenant()">
+      <stores-page-header section="Operaciones" title="Inventario"></stores-page-header>
 
         <section class="summary">
           <article>
@@ -121,24 +96,10 @@ import { MoneyPipe } from '@stores/ui';
           </table>
           <div class="empty" *ngIf="filteredProducts().length === 0">No se encontraron productos.</div>
         </section>
-      </main>
-    </div>
+    </stores-admin-shell>
   `,
   styles: [`
     :host { display: block; min-height: 100vh; color: #111827; background: #f3f4f6; }
-    .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
-    .sidebar { position: sticky; top: 0; height: 100vh; padding: 22px; color: white; background: #111827; }
-    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
-    .brand span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 8px; background: #f59e0b; color: #111827; font-weight: 900; }
-    .brand strong, .brand small { display: block; }
-    .brand small, nav a { color: #9ca3af; }
-    nav { display: grid; gap: 8px; }
-    nav a { padding: 11px 12px; border-radius: 8px; text-decoration: none; }
-    nav a.active { color: white; background: rgba(255, 255, 255, 0.12); }
-    main { display: grid; gap: 22px; padding: 24px; }
-    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    .topbar p { margin: 0 0 6px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; color: #6b7280; }
-    .topbar h1 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.45rem); }
     .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
     .summary article { display: grid; gap: 6px; padding: 18px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; }
     .summary span { color: #6b7280; font-size: 0.84rem; }
@@ -166,7 +127,7 @@ import { MoneyPipe } from '@stores/ui';
     button.small { min-height: 32px; padding: 0 10px; font-size: 0.8rem; }
     .empty { padding: 32px; text-align: center; color: #6b7280; }
     a { text-decoration: none; color: inherit; }
-    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; } .summary { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 980px) { .summary { grid-template-columns: 1fr 1fr; } }
   `]
 })
 export class InventoryPage {

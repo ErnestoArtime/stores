@@ -1,45 +1,21 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+
 import { CatalogFacade, AuthService } from '@stores/data-access';
+import { AdminShellComponent, PageHeaderComponent } from '@stores/shared/shell';
 
 @Component({
   selector: 'admin-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, AdminShellComponent, PageHeaderComponent],
   template: `
-    <div class="layout">
-      <aside class="sidebar">
-        <div class="brand">
-          <span>MC</span>
-          <div>
-            <strong>{{ facade.tenant().name }}</strong>
-            <small>Operacion comercial</small>
-          </div>
+    <stores-admin-shell [tenant]="facade.tenant()">
+      <stores-page-header section="Configuracion" title="Multi-tenant y branding" [hasActions]="true">
+        <div actions>
+          <button type="button" (click)="auth.signOut()">Cerrar sesion</button>
         </div>
-        <nav>
-          <a routerLink="/dashboard">Panel</a>
-          <a routerLink="/catalog/products">Productos</a>
-          <a routerLink="/catalog/categories">Categorias</a>
-          <a routerLink="/stores">Sucursales</a>
-          <a routerLink="/inventory">Inventario</a>
-          <a routerLink="/dispatch">Delivery</a>
-          <a routerLink="/customers">Clientes</a>
-          <a routerLink="/settings" class="active">Configuracion</a>
-        </nav>
-      </aside>
-
-      <main>
-        <header class="topbar">
-          <div>
-            <p>Configuracion</p>
-            <h1>Multi-tenant y branding</h1>
-          </div>
-          <div class="actions">
-            <button type="button" (click)="auth.signOut()">Cerrar sesion</button>
-          </div>
-        </header>
+      </stores-page-header>
 
         <section class="panels-grid">
           <article class="panel">
@@ -148,25 +124,10 @@ import { CatalogFacade, AuthService } from '@stores/data-access';
             <li>Un solo codigo sirve a multiples clientes con configuracion independiente.</li>
           </ul>
         </section>
-      </main>
-    </div>
+    </stores-admin-shell>
   `,
   styles: [`
     :host { display: block; min-height: 100vh; color: #111827; background: #f3f4f6; }
-    .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
-    .sidebar { position: sticky; top: 0; height: 100vh; padding: 22px; color: white; background: #111827; }
-    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
-    .brand span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 8px; background: #f59e0b; color: #111827; font-weight: 900; }
-    .brand strong, .brand small { display: block; }
-    .brand small, nav a { color: #9ca3af; }
-    nav { display: grid; gap: 8px; }
-    nav a { padding: 11px 12px; border-radius: 8px; text-decoration: none; }
-    nav a.active { color: white; background: rgba(255, 255, 255, 0.12); }
-    main { display: grid; gap: 22px; padding: 24px; }
-    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    .topbar p { margin: 0 0 6px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; color: #6b7280; }
-    .topbar h1 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.45rem); }
-    .actions { display: flex; gap: 10px; }
     button { min-height: 40px; padding: 0 14px; border: 1px solid #d1d5db; border-radius: 8px; background: white; color: #111827; font-weight: 800; cursor: pointer; }
     button.danger { border-color: #fca5a5; color: #b91c1c; background: #fef2f2; }
     .panels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -188,7 +149,7 @@ import { CatalogFacade, AuthService } from '@stores/data-access';
     .info-panel li { margin-bottom: 6px; }
     .info-panel code { padding: 2px 6px; border-radius: 4px; background: #f3f4f6; font-size: 0.84rem; }
     a { text-decoration: none; color: inherit; }
-    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; } .panels-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 980px) { .panels-grid { grid-template-columns: 1fr; } }
   `]
 })
 export class SettingsPage implements OnInit {

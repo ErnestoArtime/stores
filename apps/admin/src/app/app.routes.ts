@@ -1,11 +1,16 @@
 import { Routes } from '@angular/router';
-import { adminGuard, guestGuard } from '@stores/data-access';
+import { adminGuard, guestGuard, featureGuard, onboardingGuard } from '@stores/data-access';
 
 export const appRoutes: Routes = [
   {
     path: 'login',
     canActivate: [guestGuard],
     loadComponent: () => import('./auth/login.page').then((m) => m.LoginPage)
+  },
+  {
+    path: 'onboarding',
+    canActivate: [onboardingGuard],
+    loadComponent: () => import('./onboarding/onboarding.page').then((m) => m.OnboardingPage)
   },
   {
     path: 'dashboard',
@@ -44,12 +49,12 @@ export const appRoutes: Routes = [
   },
   {
     path: 'dispatch',
-    canActivate: [adminGuard],
+    canActivate: [adminGuard, featureGuard('dispatch')],
     loadComponent: () => import('./dispatch/dispatch.page').then((m) => m.DispatchPage)
   },
   {
     path: 'customers',
-    canActivate: [adminGuard],
+    canActivate: [adminGuard, featureGuard(['promotions', 'loyalty'])],
     loadComponent: () => import('./customers/customers.page').then((m) => m.CustomersPage)
   },
   {

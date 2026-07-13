@@ -3,45 +3,21 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CatalogFacade } from '@stores/data-access';
+import { AdminShellComponent, PageHeaderComponent } from '@stores/shared/shell';
 import { Product } from '@stores/domain';
 import { MoneyPipe } from '@stores/ui';
 
 @Component({
   selector: 'admin-products',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, MoneyPipe],
+  imports: [CommonModule, FormsModule, RouterLink, MoneyPipe, AdminShellComponent, PageHeaderComponent],
   template: `
-    <div class="layout">
-      <aside class="sidebar">
-        <div class="brand">
-          <span>MC</span>
-          <div>
-            <strong>{{ facade.tenant().name }}</strong>
-            <small>Operacion comercial</small>
-          </div>
+    <stores-admin-shell [tenant]="facade.tenant()">
+      <stores-page-header section="Catalogo" title="Productos" [hasActions]="true">
+        <div actions>
+          <button type="button" routerLink="/catalog/products/new" class="primary">Nuevo producto</button>
         </div>
-        <nav>
-          <a routerLink="/dashboard">Panel</a>
-          <a routerLink="/catalog/products" class="active">Productos</a>
-          <a routerLink="/catalog/categories">Categorias</a>
-          <a routerLink="/stores">Sucursales</a>
-          <a routerLink="/inventory">Inventario</a>
-          <a routerLink="/dispatch">Delivery</a>
-          <a routerLink="/customers">Clientes</a>
-          <a routerLink="/settings">Configuracion</a>
-        </nav>
-      </aside>
-
-      <main>
-        <header class="topbar">
-          <div>
-            <p>Catalogo</p>
-            <h1>Productos</h1>
-          </div>
-          <div class="actions">
-            <button type="button" routerLink="/catalog/products/new" class="primary">Nuevo producto</button>
-          </div>
-        </header>
+      </stores-page-header>
 
         <section class="filters">
           <input
@@ -104,24 +80,11 @@ import { MoneyPipe } from '@stores/ui';
             No se encontraron productos.
           </div>
         </section>
-      </main>
-    </div>
+    </stores-admin-shell>
   `,
   styles: [`
     :host { display: block; min-height: 100vh; color: #111827; background: #f3f4f6; }
-    .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
-    .sidebar { position: sticky; top: 0; height: 100vh; padding: 22px; color: white; background: #111827; }
-    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
-    .brand span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 8px; background: #f59e0b; color: #111827; font-weight: 900; }
-    .brand strong, .brand small { display: block; }
-    .brand small, nav a { color: #9ca3af; }
-    nav { display: grid; gap: 8px; }
-    nav a { padding: 11px 12px; border-radius: 8px; text-decoration: none; }
-    nav a.active { color: white; background: rgba(255, 255, 255, 0.12); }
-    main { display: grid; gap: 22px; padding: 24px; }
-    .topbar, .panel__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    .topbar p { margin: 0 0 6px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; color: #6b7280; }
-    .topbar h1 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.45rem); }
+    .panel__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
     button { min-height: 40px; padding: 0 14px; border: 1px solid #d1d5db; border-radius: 8px; background: white; color: #111827; font-weight: 800; cursor: pointer; }
     button.primary { border-color: #0f766e; background: #0f766e; color: white; }
     button.link { border: none; background: none; color: #0f766e; padding: 0; min-height: auto; font-weight: 600; }
@@ -144,7 +107,6 @@ import { MoneyPipe } from '@stores/ui';
     .row-actions a { color: #0f766e; text-decoration: none; font-weight: 600; }
     .empty { padding: 32px; text-align: center; color: #6b7280; }
     a { text-decoration: none; color: inherit; }
-    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; } nav { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); } }
   `]
 })
 export class ProductsPage {

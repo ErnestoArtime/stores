@@ -5,75 +5,11 @@
   background: #f3f4f6;
 }
 
-.layout {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  min-height: 100vh;
-}
-
-.sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  padding: 22px;
-  color: white;
-  background: #111827;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 28px;
-}
-
-.brand span {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border-radius: 8px;
-  background: #f59e0b;
-  color: #111827;
-  font-weight: 900;
-}
-
-.brand strong,
-.brand small {
-  display: block;
-}
-
-.brand small,
-nav a,
-.panel p,
-.topbar p,
-td small {
-  color: #9ca3af;
-}
-
-nav {
-  display: grid;
-  gap: 8px;
-}
-
-nav a {
-  padding: 11px 12px;
-  border-radius: 8px;
-  text-decoration: none;
-}
-
-nav a.active {
-  color: white;
-  background: rgba(255, 255, 255, 0.12);
-}
-
 main {
   display: grid;
   gap: 22px;
-  padding: 24px;
 }
 
-.topbar,
 .panel__header,
 .branch,
 .inventory {
@@ -83,22 +19,17 @@ main {
   gap: 16px;
 }
 
-.topbar h1,
 .panel h2 {
   margin: 0;
   letter-spacing: 0;
 }
 
-.topbar p,
 .panel p {
   margin: 0 0 6px;
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
-}
-
-.topbar h1 {
-  font-size: clamp(1.7rem, 3vw, 2.45rem);
+  color: #9ca3af;
 }
 
 button {
@@ -364,38 +295,14 @@ td small {
 }
 
 @media (max-width: 980px) {
-  .layout,
   .metrics,
   .workspace,
   .workspace.secondary {
     grid-template-columns: 1fr;
   }
-
-  .sidebar {
-    position: static;
-    height: auto;
-  }
-
-  nav {
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  }
 }
 
 @media (max-width: 680px) {
-  main {
-    padding: 16px;
-  }
-
-  .topbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-
   .orders {
     overflow-x: auto;
   }

@@ -2,12 +2,7 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Tenant } from '@stores/domain';
-
-export interface NavItem {
-  label: string;
-  path: string;
-  icon?: string;
-}
+import { NavItem } from './nav-item.model';
 
 @Component({
   selector: 'stores-admin-sidebar',

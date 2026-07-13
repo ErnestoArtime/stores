@@ -180,7 +180,7 @@ import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
           </article>
         </section>
 
-        <section class="workspace secondary">
+        <section class="workspace secondary" *ngIf="facade.features().import">
           <article class="panel">
             <div class="panel__header">
               <div>

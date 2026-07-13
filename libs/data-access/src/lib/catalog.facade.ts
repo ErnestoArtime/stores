@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, computed } from '@angular/core';
 import { TenantService, StoreService } from '@stores/features/tenant';
 import { CatalogService, InventoryService, ImportService } from '@stores/features/catalog';
 import { OrderService } from '@stores/features/orders';
@@ -18,6 +18,8 @@ export class CatalogFacade {
   private readonly marketingService = inject(MarketingService);
 
   readonly tenant = this.tenantService.tenant;
+  readonly features = computed(() => this.tenant().features);
+  readonly limits = computed(() => this.tenant().limits);
   readonly stores = this.storeService.stores;
   readonly categories = this.catalogService.categories;
   readonly products = this.catalogService.products;

@@ -1,11 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { Product } from '@stores/domain';
 import { SupabaseClientService } from '@stores/data-access';
+import { TenantService } from '@stores/features/tenant';
 import { CatalogService } from './catalog.service';
 
 @Injectable({ providedIn: 'root' })
 export class InventoryService {
   private readonly supabase = inject(SupabaseClientService);
+  private readonly tenantService = inject(TenantService);
   private readonly catalog = inject(CatalogService);
 
   async createProduct(product: Omit<Product, 'id'>): Promise<Product | null> {

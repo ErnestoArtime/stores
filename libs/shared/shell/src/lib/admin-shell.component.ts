@@ -2,15 +2,16 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Tenant } from '@stores/domain';
+import { NavItem } from './nav-item.model';
 
-const DEFAULT_NAV_ITEMS: { label: string; path: string }[] = [
+const DEFAULT_NAV_ITEMS: NavItem[] = [
   { label: 'Panel', path: '/dashboard' },
   { label: 'Productos', path: '/catalog/products' },
   { label: 'Categorias', path: '/catalog/categories' },
   { label: 'Sucursales', path: '/stores' },
   { label: 'Inventario', path: '/inventory' },
-  { label: 'Delivery', path: '/dispatch' },
-  { label: 'Clientes', path: '/customers' },
+  { label: 'Delivery', path: '/dispatch', features: ['dispatch'] },
+  { label: 'Clientes', path: '/customers', features: ['promotions', 'loyalty'] },
   { label: 'Configuracion', path: '/settings' }
 ];
 
@@ -29,14 +30,16 @@ const DEFAULT_NAV_ITEMS: { label: string; path: string }[] = [
           </div>
         </div>
         <nav>
-          <a
-            *ngFor="let item of items"
-            [routerLink]="item.path"
-            routerLinkActive="active"
-            [routerLinkActiveOptions]="{ exact: item.path === '/dashboard' }"
-          >
-            {{ item.label }}
-          </a>
+          <ng-container *ngFor="let item of items">
+            <a
+              *ngIf="hasAccess(item)"
+              [routerLink]="item.path"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: item.path === '/dashboard' }"
+            >
+              {{ item.label }}
+            </a>
+          </ng-container>
         </nav>
       </aside>
       <main>
@@ -126,5 +129,10 @@ const DEFAULT_NAV_ITEMS: { label: string; path: string }[] = [
 })
 export class AdminShellComponent {
   @Input() tenant: Tenant | null = null;
-  @Input() items: { label: string; path: string }[] = DEFAULT_NAV_ITEMS;
+  @Input() items: NavItem[] = DEFAULT_NAV_ITEMS;
+
+  hasAccess(item: NavItem): boolean {
+    if (!item.features?.length) return true;
+    return item.features.some((f) => this.tenant?.features?.[f]);
+  }
 }
