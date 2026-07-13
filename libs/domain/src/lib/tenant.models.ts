@@ -30,10 +30,13 @@ export interface BusinessHours {
   days: number[];
 }
 
+export type NotificationChannel = 'whatsapp' | 'email' | 'push' | 'telegram';
+
 export interface TenantSettings {
   businessHours: BusinessHours;
   deliveryWindowOptions: string[];
   paymentMethods: string[];
+  notificationChannels: NotificationChannel[];
 }
 
 export interface TenantBilling {
@@ -65,4 +68,5 @@ export interface StaffProfile {
   email: string;
   role: StaffRole;
   active: boolean;
+  isSuperadmin?: boolean;
 }

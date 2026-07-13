@@ -12,6 +12,7 @@ export class AuthService {
   private readonly _user = signal<User | null>(null);
   private readonly _session = signal<Session | null>(null);
   private readonly _profile = signal<StaffProfile | null>(null);
+  private readonly _isSuperadmin = signal(false);
   private readonly _loading = signal(true);
 
   readonly user = this._user.asReadonly();
@@ -20,6 +21,7 @@ export class AuthService {
   readonly loading = this._loading.asReadonly();
   readonly isAuthenticated = computed(() => !!this._user());
   readonly isStaff = computed(() => !!this._profile() && this._profile()!.active);
+  readonly isSuperadmin = computed(() => this._isSuperadmin());
   private initPromise: Promise<void>;
 
   constructor() {
@@ -48,6 +50,7 @@ export class AuthService {
         this.loadProfile(session.user.id);
       } else {
         this._profile.set(null);
+        this._isSuperadmin.set(false);
       }
     });
 
@@ -88,29 +91,36 @@ export class AuthService {
     }
     await this.supabase.client.auth.signOut();
     this._profile.set(null);
+    this._isSuperadmin.set(false);
   }
 
-  private async loadProfile(userId: string): Promise<void> {
+  async loadProfile(userId?: string): Promise<void> {
     if (!this.supabase.configured) {
       return;
     }
 
-    const { data, error } = await this.supabase.client
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    const id = userId ?? this._user()?.id;
+    if (!id) {
+      return;
+    }
 
-    if (!error && data) {
+    const [profileResult, superadminResult] = await Promise.all([
+      this.supabase.client.from('profiles').select('*').eq('id', id).single(),
+      this.supabase.client.from('superadmins').select('id').eq('id', id).single()
+    ]);
+
+    if (!profileResult.error && profileResult.data) {
       this._profile.set({
-        id: data.id,
-        tenantId: data.tenant_id,
-        fullName: data.full_name,
-        email: data.email,
-        role: data.role,
-        active: data.active
+        id: profileResult.data.id,
+        tenantId: profileResult.data.tenant_id,
+        fullName: profileResult.data.full_name,
+        email: profileResult.data.email,
+        role: profileResult.data.role,
+        active: profileResult.data.active
       });
     }
+
+    this._isSuperadmin.set(!!superadminResult.data);
   }
 
   hasRole(...roles: StaffProfile['role'][]): boolean {

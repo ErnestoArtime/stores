@@ -27,6 +27,7 @@
       "@stores/features/orders": ["libs/features/orders/src/index.ts"],
       "@stores/features/dispatch": ["libs/features/dispatch/src/index.ts"],
       "@stores/features/marketing": ["libs/features/marketing/src/index.ts"],
+      "@stores/features/superadmin": ["libs/features/superadmin/src/index.ts"],
       "@stores/shared/shell": ["libs/shared/shell/src/index.ts"]
     }
   },

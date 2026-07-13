@@ -1,0 +1,8 @@
+{
+  "name": "features-superadmin",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/features/superadmin/src",
+  "projectType": "library",
+  "targets": {},
+  "tags": ["scope:features", "type:data-access"]
+}
