@@ -72,7 +72,7 @@ import { MoneyPipe } from '@stores/ui';
           <h1>Compra de mercado, hogar y tiendas locales con delivery.</h1>
           <div class="hero__actions">
             <ion-searchbar placeholder="Buscar productos, marcas o tiendas" show-clear-button="focus"></ion-searchbar>
-            <ion-segment value="delivery">
+            <ion-segment value="delivery" *ngIf="facade.features().delivery">
               <ion-segment-button value="delivery">
                 <ion-icon name="bicycle-outline"></ion-icon>
                 Delivery
@@ -83,11 +83,9 @@ import { MoneyPipe } from '@stores/ui';
               </ion-segment-button>
             </ion-segment>
           </div>
-          <div class="hero__schedule">
-            <ion-select label="Ventana de entrega" label-placement="stacked" value="today">
-              <ion-select-option value="today">Hoy 12:00 - 14:00</ion-select-option>
-              <ion-select-option value="evening">Hoy 18:00 - 20:00</ion-select-option>
-              <ion-select-option value="tomorrow">Manana 09:00 - 12:00</ion-select-option>
+          <div class="hero__schedule" *ngIf="facade.features().delivery">
+            <ion-select label="Ventana de entrega" label-placement="stacked" [value]="facade.tenant().settings.deliveryWindowOptions[0] || 'today'">
+              <ion-select-option *ngFor="let window of facade.tenant().settings.deliveryWindowOptions" [value]="window">{{ window }}</ion-select-option>
             </ion-select>
             <a [href]="supportUrl()" target="_blank" rel="noreferrer">Soporte WhatsApp</a>
           </div>
@@ -102,13 +100,15 @@ import { MoneyPipe } from '@stores/ui';
           </ion-chip>
         </section>
 
-        <section class="value-grid" aria-label="Beneficios">
-          <article *ngFor="let promo of facade.promotions()">
-            <span>{{ promo.code }}</span>
-            <h3>{{ promo.title }}</h3>
-            <p>{{ promo.description }}</p>
-          </article>
-          <article>
+        <section class="value-grid" aria-label="Beneficios" *ngIf="facade.features().promotions || facade.features().loyalty">
+          <ng-container *ngIf="facade.features().promotions">
+            <article *ngFor="let promo of facade.promotions()">
+              <span>{{ promo.code }}</span>
+              <h3>{{ promo.title }}</h3>
+              <p>{{ promo.description }}</p>
+            </article>
+          </ng-container>
+          <article *ngIf="facade.features().loyalty">
             <span>{{ facade.loyaltyTiers()[1].name }}</span>
             <h3>Programa de puntos</h3>
             <p>{{ facade.loyaltyTiers()[1].perks.join(' · ') }}</p>
@@ -173,7 +173,7 @@ import { MoneyPipe } from '@stores/ui';
           </div>
         </section>
 
-        <section class="zones">
+        <section class="zones" *ngIf="facade.features().delivery">
           <article *ngFor="let zone of facade.deliveryZones()">
             <strong>{{ zone.name }}</strong>
             <span>{{ zone.fee | storeMoney: facade.tenant().currency }}</span>
@@ -187,7 +187,7 @@ import { MoneyPipe } from '@stores/ui';
             <strong>{{ cart.subtotal() | storeMoney: facade.tenant().currency }}</strong>
           </div>
           <ion-button expand="block" [disabled]="cart.isEmpty()" routerLink="/checkout">
-            Reservar delivery ({{ cart.count() }})
+            {{ facade.features().delivery ? 'Reservar delivery' : 'Confirmar pedido' }} ({{ cart.count() }})
           </ion-button>
         </aside>
       </main>

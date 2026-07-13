@@ -34,7 +34,8 @@ export const demoTenant: Tenant = {
   settings: {
     businessHours: { open: '08:00', close: '20:00', days: [1, 2, 3, 4, 5, 6] },
     deliveryWindowOptions: ['Hoy 12:00 - 14:00', 'Hoy 18:00 - 20:00', 'Manana 09:00 - 12:00'],
-    paymentMethods: ['cash', 'transfer', 'pos']
+    paymentMethods: ['cash', 'transfer', 'pos'],
+    notificationChannels: ['whatsapp']
   },
   billing: {
     plan: 'growth',

@@ -6,6 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function isValidE164(phone: string): boolean {
+  return /^\+[1-9]\d{1,14}$/.test(phone);
+}
+
+function normalizePhone(phone: string): string {
+  return phone.replace(/\s/g, '');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -47,6 +55,62 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Campos requeridos faltantes' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const normalizedPhone = normalizePhone(customer_phone);
+    if (!isValidE164(normalizedPhone)) {
+      return new Response(
+        JSON.stringify({ error: 'Telefono invalido. Use un numero internacional valido (ej: +5355551234).' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Load tenant features and limits
+    const { data: tenant, error: tenantError } = await supabase
+      .from('tenants')
+      .select('features, limits')
+      .eq('id', tenant_id)
+      .single();
+
+    if (tenantError || !tenant) {
+      return new Response(
+        JSON.stringify({ error: 'Tenant no encontrado' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const features = tenant.features || {};
+    const limits = tenant.limits || {};
+
+    if (!features.delivery && (delivery_zone || delivery_window)) {
+      return new Response(
+        JSON.stringify({ error: 'La entrega a domicilio no esta habilitada para este tenant.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Enforce monthly order limit
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const { count: orderCount, error: countError } = await supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenant_id)
+      .gte('created_at', startOfMonth);
+
+    if (countError) {
+      return new Response(
+        JSON.stringify({ error: 'Error al verificar limite de pedidos' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const maxOrders = limits.max_orders_per_month || 5000;
+    if ((orderCount || 0) >= maxOrders) {
+      return new Response(
+        JSON.stringify({ error: 'Se ha alcanzado el limite de pedidos mensual del plan.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -167,6 +231,29 @@ serve(async (req) => {
           .eq('id', line.productId);
       }
     }
+
+    // Notify customer asynchronously via WhatsApp (do not block response)
+    fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${supabaseServiceKey}`,
+        'x-client-info': 'create-order-function'
+      },
+      body: JSON.stringify({
+        tenantId: tenant_id,
+        channel: 'whatsapp',
+        eventKey: 'order_placed',
+        recipient: normalizedPhone,
+        variables: {
+          customer_name,
+          code: order.code,
+          total: calculatedTotal.toFixed(2)
+        }
+      })
+    }).catch(() => {
+      // Notification failure should not fail order creation
+    });
 
     return new Response(
       JSON.stringify({ id: order.id, code: order.code, total: calculatedTotal }),

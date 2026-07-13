@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
+type NotificationChannel = 'whatsapp' | 'email' | 'push' | 'telegram';
+
 type NotificationPayload = {
   tenantId: string;
-  channel: 'whatsapp' | 'email' | 'push' | 'telegram';
+  channel: NotificationChannel;
   eventKey: string;
   recipient: string;
   variables?: Record<string, string>;
@@ -116,6 +118,46 @@ async function sendPush(
   return { ok: false, error: 'FCM push requires device token registration' };
 }
 
+async function canNotifyTenant(req: Request, serviceRoleKey: string, supabaseUrl: string, tenantId: string): Promise<boolean> {
+  const authHeader = req.headers.get('Authorization') ?? '';
+  if (!authHeader.startsWith('Bearer ')) {
+    return false;
+  }
+  const token = authHeader.replace('Bearer ', '');
+
+  // Service role keys are allowed for inter-function calls.
+  if (token === serviceRoleKey) {
+    return true;
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+  const { data: authData, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !authData.user) {
+    return false;
+  }
+
+  // Superadmins are always authorized
+  const { data: superadmin } = await supabase
+    .from('superadmins')
+    .select('id')
+    .eq('id', authData.user.id)
+    .single();
+  if (superadmin) {
+    return true;
+  }
+
+  // Active staff members of the tenant are authorized
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', authData.user.id)
+    .eq('tenant_id', tenantId)
+    .eq('active', true)
+    .single();
+
+  return !!profile;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -137,6 +179,13 @@ Deno.serve(async (req) => {
 
   const payload = (await req.json()) as NotificationPayload;
   const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  if (!(await canNotifyTenant(req, serviceRoleKey, supabaseUrl, payload.tenantId))) {
+    return Response.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: corsHeaders }
+    );
+  }
 
   // Load template
   const { data: template, error } = await supabase

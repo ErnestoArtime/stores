@@ -12,6 +12,7 @@ import {
   IonItem,
   IonLabel,
   IonList,
+  IonNote,
   IonSelect,
   IonSelectOption,
   IonText,
@@ -37,6 +38,7 @@ import { MoneyPipe } from '@stores/ui';
     IonItem,
     IonLabel,
     IonList,
+    IonNote,
     IonSelect,
     IonSelectOption,
     IonText,
@@ -85,7 +87,8 @@ import { MoneyPipe } from '@stores/ui';
 
             <ion-item>
               <ion-label position="stacked">Telefono</ion-label>
-              <ion-input [(ngModel)]="customerPhone" name="phone" required placeholder="53 5555 1234"></ion-input>
+              <ion-input [(ngModel)]="customerPhone" name="phone" required placeholder="+5355551234"></ion-input>
+              <ion-note slot="helper">Incluye el codigo de pais (ej: +53...)</ion-note>
             </ion-item>
 
             <ion-item>
@@ -93,7 +96,7 @@ import { MoneyPipe } from '@stores/ui';
               <ion-input [(ngModel)]="deliveryAddress" name="address" required placeholder="Calle, numero, entre que calles"></ion-input>
             </ion-item>
 
-            <ion-item>
+            <ion-item *ngIf="facade.features().delivery">
               <ion-label position="stacked">Zona de entrega</ion-label>
               <ion-select [(ngModel)]="deliveryZone" name="zone" placeholder="Seleccionar zona">
                 <ion-select-option *ngFor="let zone of facade.deliveryZones()" [value]="zone.id">
@@ -102,7 +105,7 @@ import { MoneyPipe } from '@stores/ui';
               </ion-select>
             </ion-item>
 
-            <ion-item>
+            <ion-item *ngIf="facade.features().delivery">
               <ion-label position="stacked">Ventana de entrega</ion-label>
               <ion-select [(ngModel)]="deliveryWindow" name="window" placeholder="Seleccionar ventana">
                 <ion-select-option *ngFor="let window of facade.tenant().settings.deliveryWindowOptions" [value]="window">
@@ -131,7 +134,7 @@ import { MoneyPipe } from '@stores/ui';
               <span>Subtotal</span>
               <strong>{{ cart.subtotal() | storeMoney: facade.tenant().currency }}</strong>
             </div>
-            <div class="summary-row">
+            <div class="summary-row" *ngIf="facade.features().delivery">
               <span>Envio</span>
               <strong>{{ selectedZoneFee() | storeMoney: facade.tenant().currency }}</strong>
             </div>
@@ -231,13 +234,25 @@ export class CheckoutPage {
   readonly discount = signal(0);
   readonly orderTotal = signal(0);
 
+  private normalizePhone(phone: string): string {
+    return phone.replace(/\s/g, '');
+  }
+
+  private isValidPhone(phone: string): boolean {
+    return /^\+[1-9]\d{1,14}$/.test(phone);
+  }
+
   isFormValid(): boolean {
+    const deliveryValid = this.facade.features().delivery
+      ? this.deliveryZone.length > 0 && this.deliveryWindow.length > 0
+      : true;
+    const normalizedPhone = this.normalizePhone(this.customerPhone);
     return (
       this.customerName.trim().length > 0 &&
       this.customerPhone.trim().length > 0 &&
+      this.isValidPhone(normalizedPhone) &&
       this.deliveryAddress.trim().length > 0 &&
-      this.deliveryZone.length > 0 &&
-      this.deliveryWindow.length > 0 &&
+      deliveryValid &&
       this.paymentMethod.length > 0 &&
       !this.cart.isEmpty()
     );
@@ -274,19 +289,20 @@ export class CheckoutPage {
       imageUrl: item.product.imageUrl
     }));
 
+    const hasDelivery = this.facade.features().delivery;
     const orderPayload = {
       tenant_id: this.facade.tenant().id,
       store_id: '',
       customer_name: this.customerName,
-      customer_phone: this.customerPhone,
+      customer_phone: this.normalizePhone(this.customerPhone),
       delivery_address: this.deliveryAddress,
-      delivery_zone: this.deliveryZone,
-      delivery_window: this.deliveryWindow,
+      delivery_zone: hasDelivery ? this.deliveryZone : null,
+      delivery_window: hasDelivery ? this.deliveryWindow : null,
       payment_method: this.paymentMethod,
       subtotal: this.cart.subtotal(),
-      delivery_fee: zoneFee,
+      delivery_fee: hasDelivery ? zoneFee : 0,
       discount: this.discount(),
-      total: this.cart.calculateTotal(zoneFee, this.discount()),
+      total: this.cart.calculateTotal(hasDelivery ? zoneFee : 0, this.discount()),
       lines: orderLines,
       coupon_code: this.couponCode || null
     };

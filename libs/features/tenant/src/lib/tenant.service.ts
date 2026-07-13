@@ -111,14 +111,16 @@ export class TenantService {
     const defaults: TenantSettings = {
       businessHours: { open: '08:00', close: '20:00', days: [1, 2, 3, 4, 5, 6] },
       deliveryWindowOptions: ['Hoy 12:00 - 14:00', 'Hoy 18:00 - 20:00', 'Manana 09:00 - 12:00'],
-      paymentMethods: ['cash', 'transfer', 'pos']
+      paymentMethods: ['cash', 'transfer', 'pos'],
+      notificationChannels: ['whatsapp']
     };
     if (!raw || typeof raw !== 'object') return defaults;
     const s = raw as Record<string, unknown>;
     return {
       businessHours: (s['business_hours'] as TenantSettings['businessHours']) ?? defaults.businessHours,
       deliveryWindowOptions: (s['delivery_window_options'] as string[]) ?? defaults.deliveryWindowOptions,
-      paymentMethods: (s['payment_methods'] as string[]) ?? defaults.paymentMethods
+      paymentMethods: (s['payment_methods'] as string[]) ?? defaults.paymentMethods,
+      notificationChannels: (s['notification_channels'] as TenantSettings['notificationChannels']) ?? defaults.notificationChannels
     };
   }
 

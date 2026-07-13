@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { storefrontAuthGuard } from '@stores/data-access';
+import { storefrontAuthGuard, featureGuard } from '@stores/data-access';
 
 export const appRoutes: Routes = [
   {
@@ -8,7 +8,7 @@ export const appRoutes: Routes = [
   },
   {
     path: 'checkout',
-    canActivate: [storefrontAuthGuard],
+    canActivate: [storefrontAuthGuard, featureGuard('delivery')],
     loadComponent: () => import('./checkout/checkout.page').then((m) => m.CheckoutPage)
   },
   {
