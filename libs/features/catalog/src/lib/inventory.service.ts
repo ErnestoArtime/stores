@@ -45,13 +45,13 @@ export class InventoryService {
       categoryId: data.category_id,
       name: data.name,
       sku: data.sku,
-      description: data.description || '',
+      description: data.description,
       price: data.price,
       stock: data.stock,
       unit: data.unit,
-      imageUrl: data.image_url || '',
+      imageUrl: data.image_url ?? '',
       status: data.status,
-      tags: data.tags || []
+      tags: data.tags
     };
 
     this.catalog.addProductToState(created);
@@ -63,18 +63,31 @@ export class InventoryService {
       return null;
     }
 
-    const payload: Record<string, unknown> = {};
-    if (updates.name !== undefined) payload['name'] = updates.name;
-    if (updates.sku !== undefined) payload['sku'] = updates.sku;
-    if (updates.description !== undefined) payload['description'] = updates.description;
-    if (updates.price !== undefined) payload['price'] = updates.price;
-    if (updates.stock !== undefined) payload['stock'] = updates.stock;
-    if (updates.unit !== undefined) payload['unit'] = updates.unit;
-    if (updates.imageUrl !== undefined) payload['image_url'] = updates.imageUrl;
-    if (updates.status !== undefined) payload['status'] = updates.status;
-    if (updates.tags !== undefined) payload['tags'] = updates.tags;
-    if (updates.categoryId !== undefined) payload['category_id'] = updates.categoryId;
-    if (updates.storeId !== undefined) payload['store_id'] = updates.storeId;
+    const payload: Partial<{
+      name: string;
+      sku: string;
+      description: string;
+      price: number;
+      stock: number;
+      unit: string;
+      image_url: string;
+      status: Product['status'];
+      tags: string[];
+      category_id: string;
+      store_id: string;
+    }> = {};
+
+    if (updates.name !== undefined) payload.name = updates.name;
+    if (updates.sku !== undefined) payload.sku = updates.sku;
+    if (updates.description !== undefined) payload.description = updates.description;
+    if (updates.price !== undefined) payload.price = updates.price;
+    if (updates.stock !== undefined) payload.stock = updates.stock;
+    if (updates.unit !== undefined) payload.unit = updates.unit;
+    if (updates.imageUrl !== undefined) payload.image_url = updates.imageUrl;
+    if (updates.status !== undefined) payload.status = updates.status;
+    if (updates.tags !== undefined) payload.tags = updates.tags;
+    if (updates.categoryId !== undefined) payload.category_id = updates.categoryId;
+    if (updates.storeId !== undefined) payload.store_id = updates.storeId;
 
     const { data, error } = await this.supabase.client
       .from('products')
@@ -94,13 +107,13 @@ export class InventoryService {
       categoryId: data.category_id,
       name: data.name,
       sku: data.sku,
-      description: data.description || '',
+      description: data.description,
       price: data.price,
       stock: data.stock,
       unit: data.unit,
-      imageUrl: data.image_url || '',
+      imageUrl: data.image_url ?? '',
       status: data.status,
-      tags: data.tags || []
+      tags: data.tags
     };
 
     this.catalog.updateProductInState(updated);

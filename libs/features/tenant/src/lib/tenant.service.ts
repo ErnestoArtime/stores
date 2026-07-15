@@ -1,6 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject, signal } from '@angular/core';
-import { Tenant, TenantFeatures, TenantLimits, TenantSettings, TenantBilling, demoTenant } from '@stores/domain';
+import { Tenant, TenantFeatures, TenantLimits, TenantSettings, TenantBilling, TenantPlan, demoTenant } from '@stores/domain';
 import { RUNTIME_CONFIG } from '@stores/data-access';
 import { SupabaseClientService } from '@stores/data-access';
 
@@ -33,11 +33,13 @@ export class TenantService {
       return;
     }
 
+    const billingRow = data.tenant_billing as unknown as { plan: string; status: string; current_period_end: string | null } | undefined;
+
     const branding = {
-      primaryColor: data.branding?.primary_color || '#0f766e',
-      accentColor: data.branding?.accent_color || '#f59e0b',
-      logoUrl: data.branding?.logo_url,
-      heroImageUrl: data.branding?.hero_image_url || ''
+      primaryColor: data.primary_color,
+      accentColor: data.accent_color,
+      logoUrl: data.logo_url ?? undefined,
+      heroImageUrl: data.hero_image_url ?? ''
     };
 
     this._tenant.set({
@@ -45,15 +47,15 @@ export class TenantService {
       slug: data.slug,
       name: data.name,
       legalName: data.legal_name,
-      plan: data.plan,
-      currency: data.currency,
-      supportPhone: data.support_phone,
-      supportWhatsapp: data.support_whatsapp,
+      plan: data.plan as Tenant['plan'],
+      currency: data.currency as Tenant['currency'],
+      supportPhone: data.support_phone ?? '',
+      supportWhatsapp: data.support_whatsapp ?? '',
       branding,
       features: this.parseFeatures(data.features),
       limits: this.parseLimits(data.limits),
       settings: this.parseSettings(data.settings),
-      billing: this.parseBilling(data.tenant_billing, data.plan)
+      billing: this.parseBilling(billingRow, data.plan)
     });
 
     this.applyBranding(branding);
@@ -126,7 +128,7 @@ export class TenantService {
 
   private parseBilling(raw?: unknown, plan?: string): TenantBilling {
     const defaults: TenantBilling = {
-      plan: (plan as TenantBilling['plan']) || 'starter',
+      plan: (plan as TenantPlan) || 'starter',
       status: 'active'
     };
     if (!raw || typeof raw !== 'object') return defaults;

@@ -9,12 +9,20 @@ export class StoreService {
   private readonly tenantService = inject(TenantService);
 
   private readonly _stores = signal<StoreLocation[]>(demoStores);
+  private readonly _loading = signal(false);
+  private readonly _error = signal<string | null>(null);
+
   readonly stores = this._stores.asReadonly();
+  readonly loading = this._loading.asReadonly();
+  readonly error = this._error.asReadonly();
 
   async loadStores(): Promise<void> {
     if (!this.supabase.configured) {
       return;
     }
+
+    this._loading.set(true);
+    this._error.set(null);
 
     const tenantId = this.tenantService.tenant().id;
     const { data, error } = await this.supabase.client
@@ -23,6 +31,8 @@ export class StoreService {
       .eq('tenant_id', tenantId);
 
     if (error || !data) {
+      this._error.set(error?.message ?? 'Error cargando tiendas');
+      this._loading.set(false);
       return;
     }
 
@@ -30,17 +40,18 @@ export class StoreService {
       id: row.id,
       tenantId: row.tenant_id,
       name: row.name,
-      type: row.type || 'mixed',
+      type: row.type as StoreLocation['type'],
       address: row.address,
-      city: row.city || '',
+      city: row.city,
       municipality: row.municipality,
-      phone: row.phone || '',
+      phone: row.phone ?? '',
       openNow: row.open_now,
       deliveryMinutes: row.delivery_minutes,
       rating: row.rating,
-      coverUrl: row.cover_url || '',
-      fulfillment: row.fulfillment || ['delivery']
+      coverUrl: row.cover_url ?? '',
+      fulfillment: row.fulfillment as StoreLocation['fulfillment']
     })));
+    this._loading.set(false);
   }
 
   async createStore(store: Omit<StoreLocation, 'id'>): Promise<StoreLocation | null> {
@@ -75,16 +86,16 @@ export class StoreService {
       id: data.id,
       tenantId: data.tenant_id,
       name: data.name,
-      type: data.type || 'mixed',
+      type: data.type as StoreLocation['type'],
       address: data.address,
-      city: data.city || '',
+      city: data.city,
       municipality: data.municipality,
-      phone: data.phone || '',
+      phone: data.phone ?? '',
       openNow: data.open_now,
       deliveryMinutes: data.delivery_minutes,
       rating: data.rating,
-      coverUrl: data.cover_url || '',
-      fulfillment: data.fulfillment || ['delivery']
+      coverUrl: data.cover_url ?? '',
+      fulfillment: data.fulfillment as StoreLocation['fulfillment']
     };
 
     this._stores.update((stores) => [...stores, created]);
