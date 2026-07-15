@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Tenant } from '@stores/domain';
 import { NavItem } from './nav-item.model';
+import { ToastContainerComponent } from './toast-container.component';
 
 const DEFAULT_NAV_ITEMS: NavItem[] = [
   { label: 'Panel', path: '/dashboard' },
@@ -18,7 +19,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
 @Component({
   selector: 'stores-admin-shell',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterLink, RouterLinkActive, ToastContainerComponent],
   template: `
     <div class="layout">
       <aside class="sidebar">
@@ -46,6 +47,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
         <ng-content></ng-content>
       </main>
     </div>
+    <stores-toast-container></stores-toast-container>
   `,
   styles: [`
     .layout {
