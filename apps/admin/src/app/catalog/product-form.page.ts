@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { CatalogFacade } from '@stores/data-access';
+import { CatalogFacade, ToastService } from '@stores/data-access';
 import { AdminShellComponent, PageHeaderComponent } from '@stores/shared/shell';
 import { Product } from '@stores/domain';
 
@@ -105,6 +105,7 @@ export class ProductFormPage implements OnInit {
   readonly facade = inject(CatalogFacade);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
 
   readonly isEditing = signal(false);
   readonly saving = signal(false);
@@ -156,16 +157,19 @@ export class ProductFormPage implements OnInit {
           ...this.product,
           tenantId: this.facade.tenant().id
         });
+        this.toast.success('Producto actualizado correctamente.');
       } else {
         await this.facade.createProduct({
           ...this.product,
           tenantId: this.facade.tenant().id,
           tags: []
         });
+        this.toast.success('Producto creado correctamente.');
       }
       this.router.navigate(['/catalog/products']);
     } catch {
       this.error.set('Error al guardar el producto.');
+      this.toast.error('Error al guardar el producto.');
     } finally {
       this.saving.set(false);
     }

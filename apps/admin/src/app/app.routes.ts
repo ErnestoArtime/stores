@@ -53,6 +53,16 @@ export const appRoutes: Routes = [
     loadComponent: () => import('./dispatch/dispatch.page').then((m) => m.DispatchPage)
   },
   {
+    path: 'orders',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./orders/orders.page').then((m) => m.OrdersPage)
+  },
+  {
+    path: 'orders/:id',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./orders/order-detail.page').then((m) => m.OrderDetailPage)
+  },
+  {
     path: 'customers',
     canActivate: [adminGuard, featureGuard(['promotions', 'loyalty'])],
     loadComponent: () => import('./customers/customers.page').then((m) => m.CustomersPage)
