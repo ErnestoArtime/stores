@@ -3,6 +3,13 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/data-access/src",
   "projectType": "library",
-  "targets": {},
+  "targets": {
+    "test": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "test:data-access"
+      }
+    }
+  },
   "tags": ["scope:shared", "type:data-access"]
 }

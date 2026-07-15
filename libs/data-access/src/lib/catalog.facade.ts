@@ -5,6 +5,8 @@ import { OrderService } from '@stores/features/orders';
 import { DispatchService } from '@stores/features/dispatch';
 import { MarketingService } from '@stores/features/marketing';
 import { Product } from '@stores/domain';
+import { DashboardService } from './dashboard.service';
+import { SupabaseClientService } from './supabase.client';
 
 @Injectable({ providedIn: 'root' })
 export class CatalogFacade {
@@ -16,6 +18,14 @@ export class CatalogFacade {
   private readonly orderService = inject(OrderService);
   private readonly dispatchService = inject(DispatchService);
   private readonly marketingService = inject(MarketingService);
+  private readonly supabase = inject(SupabaseClientService);
+
+  private readonly dashboardService = new DashboardService(
+    this.supabase,
+    this.orderService.orders,
+    this.catalogService.products,
+    this.storeService.stores
+  );
 
   readonly tenant = this.tenantService.tenant;
   readonly features = computed(() => this.tenant().features);
@@ -23,14 +33,34 @@ export class CatalogFacade {
   readonly stores = this.storeService.stores;
   readonly categories = this.catalogService.categories;
   readonly products = this.catalogService.products;
+  readonly filteredProducts = this.catalogService.filteredProducts;
+  readonly featuredProducts = this.catalogService.featuredProducts;
   readonly orders = this.orderService.orders;
+  readonly filteredOrders = this.orderService.filteredOrders;
   readonly summary = this.orderService.summary;
+  readonly kpis = this.dashboardService.kpis;
   readonly deliveryZones = this.dispatchService.deliveryZones;
   readonly promotions = this.marketingService.promotions;
   readonly couriers = this.dispatchService.couriers;
   readonly routes = this.dispatchService.routes;
   readonly loyaltyTiers = this.marketingService.loyaltyTiers;
   readonly segments = this.marketingService.segments;
+
+  readonly loading = computed(() =>
+    this.storeService.loading() ||
+    this.catalogService.loading() ||
+    this.orderService.loading() ||
+    this.dispatchService.loading() ||
+    this.marketingService.loading()
+  );
+
+  readonly error = computed(() =>
+    this.storeService.error() ??
+    this.catalogService.error() ??
+    this.orderService.error() ??
+    this.dispatchService.error() ??
+    this.marketingService.error()
+  );
 
   async loadTenantBySlug(slug?: string): Promise<void> {
     return this.tenantService.loadTenantBySlug(slug);
