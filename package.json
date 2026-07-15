@@ -9,6 +9,7 @@
     "build:storefront": "nx build storefront",
     "build:admin": "nx build admin",
     "test": "nx run-many -t test",
+    "test:data-access": "npx vitest run --config libs/data-access/vite.config.ts",
     "lint": "nx run-many -t lint",
     "graph": "nx graph",
     "cap:sync": "nx build storefront && npx cap sync"
