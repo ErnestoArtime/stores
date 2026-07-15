@@ -152,6 +152,10 @@ import { MoneyPipe } from '@stores/ui';
             <p class="error-text">{{ error() }}</p>
           </ion-text>
 
+          <ion-text color="danger" *ngIf="facade.stores().length === 0">
+            <p class="error-text">No hay tiendas disponibles para procesar el pedido.</p>
+          </ion-text>
+
           <ion-button
             expand="block"
             type="submit"
@@ -254,7 +258,8 @@ export class CheckoutPage {
       this.deliveryAddress.trim().length > 0 &&
       deliveryValid &&
       this.paymentMethod.length > 0 &&
-      !this.cart.isEmpty()
+      !this.cart.isEmpty() &&
+      this.facade.stores().length > 0
     );
   }
 
@@ -290,9 +295,10 @@ export class CheckoutPage {
     }));
 
     const hasDelivery = this.facade.features().delivery;
+    const storeId = this.facade.stores()[0]?.id ?? '';
     const orderPayload = {
       tenant_id: this.facade.tenant().id,
-      store_id: '',
+      store_id: storeId,
       customer_name: this.customerName,
       customer_phone: this.normalizePhone(this.customerPhone),
       delivery_address: this.deliveryAddress,

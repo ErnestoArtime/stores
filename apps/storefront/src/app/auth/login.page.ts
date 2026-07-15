@@ -58,17 +58,21 @@ import { AuthService } from '@stores/data-access';
             ></ion-input>
           </ion-item>
 
-          <ion-item>
+          <ion-item *ngIf="mode() === 'password'">
             <ion-label position="stacked">Contrasena</ion-label>
             <ion-input
               type="password"
               [(ngModel)]="password"
               name="password"
               placeholder="Contrasena"
-              required
+              [required]="mode() === 'password'"
               autocomplete="current-password"
             ></ion-input>
           </ion-item>
+
+          <ion-text color="success" *ngIf="message()">
+            <p class="message-text">{{ message() }}</p>
+          </ion-text>
 
           <ion-text color="danger" *ngIf="error()">
             <p class="error-text">{{ error() }}</p>
@@ -80,13 +84,18 @@ import { AuthService } from '@stores/data-access';
             [disabled]="submitting()"
             class="ion-margin-top"
           >
-            {{ submitting() ? 'Entrando...' : 'Iniciar sesion' }}
+            {{ submitting() ? 'Procesando...' : buttonLabel() }}
           </ion-button>
         </form>
 
-        <div class="demo-hint">
-          <small>Modo demo: ingresa cualquier correo y contrasena.</small>
-        </div>
+        <ion-button
+          expand="block"
+          fill="clear"
+          (click)="toggleMode()"
+          class="ion-margin-top"
+        >
+          {{ mode() === 'password' ? 'Usar enlace magico (OTP)' : 'Usar contrasena' }}
+        </ion-button>
 
         <ion-button
           expand="block"
@@ -127,13 +136,9 @@ import { AuthService } from '@stores/data-access';
       font-size: 0.84rem;
     }
 
-    .demo-hint {
-      text-align: center;
-      margin-top: 16px;
-    }
-
-    .demo-hint small {
-      color: #9ca3af;
+    .message-text {
+      padding: 8px 0;
+      font-size: 0.84rem;
     }
   `]
 })
@@ -143,21 +148,47 @@ export class LoginPage {
 
   email = '';
   password = '';
+  readonly mode = signal<'password' | 'otp'>('password');
   readonly error = signal('');
+  readonly message = signal('');
   readonly submitting = signal(false);
+
+  buttonLabel(): string {
+    return this.mode() === 'password' ? 'Iniciar sesion' : 'Enviar enlace magico';
+  }
+
+  toggleMode(): void {
+    this.mode.set(this.mode() === 'password' ? 'otp' : 'password');
+    this.error.set('');
+    this.message.set('');
+  }
 
   async onSubmit(): Promise<void> {
     this.error.set('');
+    this.message.set('');
     this.submitting.set(true);
 
-    const result = await this.auth.signInWithEmail(this.email, this.password);
-    this.submitting.set(false);
-
-    if (result.error) {
-      this.error.set(result.error);
-      return;
+    try {
+      if (this.mode() === 'otp') {
+        const result = await this.auth.signInWithOtp(this.email);
+        this.submitting.set(false);
+        if (result.error) {
+          this.error.set(result.error);
+          return;
+        }
+        this.message.set('Revisa tu correo para el enlace magico.');
+      } else {
+        const result = await this.auth.signInWithEmail(this.email, this.password);
+        this.submitting.set(false);
+        if (result.error) {
+          this.error.set(result.error);
+          return;
+        }
+        this.router.navigate(['/']);
+      }
+    } catch {
+      this.submitting.set(false);
+      this.error.set('Error al iniciar sesion. Intenta de nuevo.');
     }
-
-    this.router.navigate(['/']);
   }
 }
