@@ -201,7 +201,7 @@ export const demoOrders: Order[] = [
     discount: 0,
     total: 2250,
     notes: '',
-    placedAt: '2026-06-25T09:30:00-04:00',
+    placedAt: '2026-07-15T09:30:00-04:00',
     assignedCourierId: 'courier-ana',
     proofType: 'otp',
     lines: [
@@ -226,10 +226,57 @@ export const demoOrders: Order[] = [
     discount: 0,
     total: 7790,
     notes: '',
-    placedAt: '2026-06-25T10:15:00-04:00',
+    placedAt: '2026-07-15T10:15:00-04:00',
     proofType: 'photo',
     lines: [
       { productId: 'prod-detergent', name: 'Detergente liquido', quantity: 1, unitPrice: 890, imageUrl: '' },
+      { productId: 'prod-fan', name: 'Ventilador de mesa', quantity: 1, unitPrice: 6450, imageUrl: '' }
+    ]
+  },
+  {
+    id: 'ord-1003',
+    tenantId: demoTenant.id,
+    storeId: 'store-vedado',
+    code: 'MC-1003',
+    customerName: 'Marta Leon',
+    customerPhone: '+53 5 555 0140',
+    deliveryAddress: 'Infanta y San Lazaro',
+    deliveryZone: 'Centro Habana - Plaza',
+    deliveryWindow: 'Hoy 18:00 - 20:00',
+    status: 'delivered',
+    paymentMethod: 'cash',
+    subtotal: 1900,
+    deliveryFee: 350,
+    discount: 0,
+    total: 2250,
+    notes: '',
+    placedAt: '2026-07-14T16:45:00-04:00',
+    assignedCourierId: 'courier-ana',
+    proofType: 'otp',
+    lines: [
+      { productId: 'prod-rice', name: 'Arroz selecto', quantity: 2, unitPrice: 720, imageUrl: '' }
+    ]
+  },
+  {
+    id: 'ord-1004',
+    tenantId: demoTenant.id,
+    storeId: 'store-playa',
+    code: 'MC-1004',
+    customerName: 'Rafael Gomez',
+    customerPhone: '+53 5 555 0120',
+    deliveryAddress: '31 y 42, Playa',
+    deliveryZone: 'Playa - Marianao',
+    deliveryWindow: 'Manana 09:00 - 12:00',
+    status: 'delivered',
+    paymentMethod: 'pos',
+    subtotal: 6450,
+    deliveryFee: 450,
+    discount: 0,
+    total: 6900,
+    notes: '',
+    placedAt: '2026-07-13T11:20:00-04:00',
+    proofType: 'photo',
+    lines: [
       { productId: 'prod-fan', name: 'Ventilador de mesa', quantity: 1, unitPrice: 6450, imageUrl: '' }
     ]
   }
