@@ -1,4 +1,30 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 60;
+
+async function checkRateLimit(ip: string): Promise<boolean> {
+  try {
+    const kv = await Deno.openKv();
+    const key = ['rate_limit', 'send-notification', ip];
+    const { value } = await kv.get(key);
+    const count = (value as number) || 0;
+    if (count >= RATE_LIMIT_MAX_REQUESTS) return false;
+    await kv.set(key, count + 1, { expireIn: RATE_LIMIT_WINDOW_MS });
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+function validateNotificationPayload(body: unknown): { valid: false; error: string } | { valid: true; data: NotificationPayload } {
+  const b = body as Record<string, unknown>;
+  if (!b.tenantId || typeof b.tenantId !== 'string') return { valid: false, error: 'tenantId requerido' };
+  if (!b.channel || !['whatsapp', 'email', 'push', 'telegram'].includes(b.channel as string)) return { valid: false, error: 'channel invalido' };
+  if (!b.eventKey || typeof b.eventKey !== 'string') return { valid: false, error: 'eventKey requerido' };
+  if (!b.recipient || typeof b.recipient !== 'string') return { valid: false, error: 'recipient requerido' };
+  return { valid: true, data: b as NotificationPayload };
+}
 
 type NotificationChannel = 'whatsapp' | 'email' | 'push' | 'telegram';
 
@@ -118,7 +144,7 @@ async function sendPush(
   return { ok: false, error: 'FCM push requires device token registration' };
 }
 
-async function canNotifyTenant(req: Request, serviceRoleKey: string, supabaseUrl: string, tenantId: string): Promise<boolean> {
+async function canNotifyTenant(req: Request, serviceRoleKey: string, supabaseUrl: string, tenantId: string, supabase: SupabaseClient): Promise<boolean> {
   const authHeader = req.headers.get('Authorization') ?? '';
   if (!authHeader.startsWith('Bearer ')) {
     return false;
@@ -130,7 +156,6 @@ async function canNotifyTenant(req: Request, serviceRoleKey: string, supabaseUrl
     return true;
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
   const { data: authData, error: authError } = await supabase.auth.getUser(token);
   if (authError || !authData.user) {
     return false;
@@ -158,13 +183,30 @@ async function canNotifyTenant(req: Request, serviceRoleKey: string, supabaseUrl
   return !!profile;
 }
 
-Deno.serve(async (req) => {
+export async function handleRequest(req: Request, deps: { supabase: SupabaseClient }): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+  }
+
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  if (!(await checkRateLimit(ip))) {
+    return Response.json(
+      { error: 'Demasiadas solicitudes. Intente mas tarde.' },
+      { status: 429, headers: corsHeaders }
+    );
+  }
+
+  const rawBody = await req.json();
+  const validation = validateNotificationPayload(rawBody);
+  if (!validation.valid) {
+    return Response.json(
+      { error: validation.error },
+      { status: 400, headers: corsHeaders }
+    );
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -177,10 +219,10 @@ Deno.serve(async (req) => {
     );
   }
 
-  const payload = (await req.json()) as NotificationPayload;
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
+  const payload = validation.data;
+  const supabase = deps.supabase ?? createClient(supabaseUrl, serviceRoleKey);
 
-  if (!(await canNotifyTenant(req, serviceRoleKey, supabaseUrl, payload.tenantId))) {
+  if (!(await canNotifyTenant(req, serviceRoleKey, supabaseUrl, payload.tenantId, supabase))) {
     return Response.json(
       { error: 'Unauthorized' },
       { status: 401, headers: corsHeaders }
@@ -260,4 +302,11 @@ Deno.serve(async (req) => {
     { queued: true, channel: payload.channel, recipient: payload.recipient, title, body },
     { status: 200, headers: corsHeaders }
   );
+}
+
+Deno.serve(async (req) => {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+  return handleRequest(req, { supabase });
 });

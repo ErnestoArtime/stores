@@ -1,5 +1,40 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 30;
+
+async function checkRateLimit(ip: string): Promise<boolean> {
+  try {
+    const kv = await Deno.openKv();
+    const key = ['rate_limit', 'create-order', ip];
+    const { value } = await kv.get(key);
+    const count = (value as number) || 0;
+    if (count >= RATE_LIMIT_MAX_REQUESTS) return false;
+    await kv.set(key, count + 1, { expireIn: RATE_LIMIT_WINDOW_MS });
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+function validateCreateOrderBody(body: unknown): { valid: false; error: string } | { valid: true; data: CreateOrderRequest } {
+  const b = body as Record<string, unknown>;
+  if (!b.tenant_id || typeof b.tenant_id !== 'string') return { valid: false, error: 'tenant_id requerido' };
+  if (!b.store_id || typeof b.store_id !== 'string') return { valid: false, error: 'store_id requerido' };
+  if (!b.customer_name || typeof b.customer_name !== 'string') return { valid: false, error: 'customer_name requerido' };
+  if (!b.customer_phone || typeof b.customer_phone !== 'string') return { valid: false, error: 'customer_phone requerido' };
+  if (!b.delivery_address || typeof b.delivery_address !== 'string') return { valid: false, error: 'delivery_address requerido' };
+  if (!Array.isArray(b.lines) || b.lines.length === 0) return { valid: false, error: 'lines debe ser un array no vacio' };
+  for (const line of b.lines) {
+    const l = line as Record<string, unknown>;
+    if (!l.productId || typeof l.productId !== 'string') return { valid: false, error: 'line.productId requerido' };
+    if (!l.name || typeof l.name !== 'string') return { valid: false, error: 'line.name requerido' };
+    if (typeof l.quantity !== 'number' || l.quantity <= 0) return { valid: false, error: 'line.quantity invalido' };
+    if (typeof l.unitPrice !== 'number' || l.unitPrice < 0) return { valid: false, error: 'line.unitPrice invalido' };
+  }
+  return { valid: true, data: b as unknown as CreateOrderRequest };
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,255 +49,281 @@ function normalizePhone(phone: string): string {
   return phone.replace(/\s/g, '');
 }
 
-serve(async (req) => {
+export interface CreateOrderRequest {
+  tenant_id: string;
+  store_id: string;
+  customer_name: string;
+  customer_phone: string;
+  delivery_address: string;
+  delivery_zone?: string;
+  delivery_window?: string;
+  payment_method: string;
+  subtotal: number;
+  delivery_fee: number;
+  discount?: number;
+  total?: number;
+  lines: { productId: string; name: string; quantity: number; unitPrice: number }[];
+  coupon_code?: string;
+}
+
+export async function handleRequest(req: Request, deps: { supabase: SupabaseClient }): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const token = req.headers.get('Authorization')?.replace('Bearer ', '') ?? '';
-    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const supabase = deps.supabase ?? createClient(supabaseUrl, supabaseServiceKey);
 
-    if (authError || !authData.user) {
-      return new Response(
-        JSON.stringify({ error: 'Sesion requerida' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+  const token = req.headers.get('Authorization')?.replace('Bearer ', '') ?? '';
+  const { data: authData, error: authError } = await supabase.auth.getUser(token);
 
-    const body = await req.json();
-    const {
-      tenant_id,
-      store_id,
-      customer_name,
-      customer_phone,
-      delivery_address,
-      delivery_zone,
-      delivery_window,
-      payment_method,
-      subtotal,
-      delivery_fee,
-      discount,
-      total,
-      lines,
-      coupon_code,
-    } = body;
+  if (authError || !authData.user) {
+    return new Response(
+      JSON.stringify({ error: 'Sesion requerida' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 
-    if (!tenant_id || !store_id || !customer_name || !customer_phone || !delivery_address || !lines?.length) {
-      return new Response(
-        JSON.stringify({ error: 'Campos requeridos faltantes' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  if (!(await checkRateLimit(ip))) {
+    return new Response(
+      JSON.stringify({ error: 'Demasiadas solicitudes. Intente mas tarde.' }),
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 
-    const normalizedPhone = normalizePhone(customer_phone);
-    if (!isValidE164(normalizedPhone)) {
-      return new Response(
-        JSON.stringify({ error: 'Telefono invalido. Use un numero internacional valido (ej: +5355551234).' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+  const rawBody = await req.json();
+  const validation = validateCreateOrderBody(rawBody);
+  if (!validation.valid) {
+    return new Response(
+      JSON.stringify({ error: validation.error }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 
-    // Load tenant features and limits
-    const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
-      .select('features, limits')
-      .eq('id', tenant_id)
+  const {
+    tenant_id,
+    store_id,
+    customer_name,
+    customer_phone,
+    delivery_address,
+    delivery_zone,
+    delivery_window,
+    payment_method,
+    subtotal,
+    delivery_fee,
+    discount,
+    lines,
+    coupon_code,
+  } = validation.data;
+
+  const normalizedPhone = normalizePhone(customer_phone);
+  if (!isValidE164(normalizedPhone)) {
+    return new Response(
+      JSON.stringify({ error: 'Telefono invalido. Use un numero internacional valido (ej: +5355551234).' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Load tenant features and limits
+  const { data: tenant, error: tenantError } = await supabase
+    .from('tenants')
+    .select('features, limits')
+    .eq('id', tenant_id)
+    .single();
+
+  if (tenantError || !tenant) {
+    return new Response(
+      JSON.stringify({ error: 'Tenant no encontrado' }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const features = tenant.features || {};
+  const limits = tenant.limits || {};
+
+  if (!features.delivery && (delivery_zone || delivery_window)) {
+    return new Response(
+      JSON.stringify({ error: 'La entrega a domicilio no esta habilitada para este tenant.' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Enforce monthly order limit
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const { count: orderCount, error: countError } = await supabase
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenant_id)
+    .gte('created_at', startOfMonth);
+
+  if (countError) {
+    return new Response(
+      JSON.stringify({ error: 'Error al verificar limite de pedidos' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const maxOrders = limits.max_orders_per_month || 5000;
+  if ((orderCount || 0) >= maxOrders) {
+    return new Response(
+      JSON.stringify({ error: 'Se ha alcanzado el limite de pedidos mensual del plan.' }),
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Validate stock for each line item
+  for (const line of lines) {
+    const { data: product, error: productError } = await supabase
+      .from('products')
+      .select('id, stock, status')
+      .eq('id', line.productId)
+      .eq('tenant_id', tenant_id)
       .single();
 
-    if (tenantError || !tenant) {
+    if (productError || !product) {
       return new Response(
-        JSON.stringify({ error: 'Tenant no encontrado' }),
+        JSON.stringify({ error: `Producto ${line.productId} no encontrado` }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const features = tenant.features || {};
-    const limits = tenant.limits || {};
-
-    if (!features.delivery && (delivery_zone || delivery_window)) {
+    if (product.status !== 'active') {
       return new Response(
-        JSON.stringify({ error: 'La entrega a domicilio no esta habilitada para este tenant.' }),
+        JSON.stringify({ error: `Producto ${line.name} no esta activo` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Enforce monthly order limit
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const { count: orderCount, error: countError } = await supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
+    if (product.stock < line.quantity) {
+      return new Response(
+        JSON.stringify({ error: `Stock insuficiente para ${line.name}. Disponible: ${product.stock}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+  }
+
+  // Validate coupon if provided
+  let discountAmount = discount || 0;
+  if (coupon_code) {
+    const { data: promo } = await supabase
+      .from('promotions')
+      .select('*')
       .eq('tenant_id', tenant_id)
-      .gte('created_at', startOfMonth);
-
-    if (countError) {
-      return new Response(
-        JSON.stringify({ error: 'Error al verificar limite de pedidos' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const maxOrders = limits.max_orders_per_month || 5000;
-    if ((orderCount || 0) >= maxOrders) {
-      return new Response(
-        JSON.stringify({ error: 'Se ha alcanzado el limite de pedidos mensual del plan.' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate stock for each line item
-    for (const line of lines) {
-      const { data: product, error: productError } = await supabase
-        .from('products')
-        .select('id, stock, status')
-        .eq('id', line.productId)
-        .eq('tenant_id', tenant_id)
-        .single();
-
-      if (productError || !product) {
-        return new Response(
-          JSON.stringify({ error: `Producto ${line.productId} no encontrado` }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      if (product.status !== 'active') {
-        return new Response(
-          JSON.stringify({ error: `Producto ${line.name} no esta activo` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      if (product.stock < line.quantity) {
-        return new Response(
-          JSON.stringify({ error: `Stock insuficiente para ${line.name}. Disponible: ${product.stock}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    // Validate coupon if provided
-    let discountAmount = discount || 0;
-    if (coupon_code) {
-      const { data: promo } = await supabase
-        .from('promotions')
-        .select('*')
-        .eq('tenant_id', tenant_id)
-        .eq('code', coupon_code)
-        .eq('active', true)
-        .single();
-
-      if (promo) {
-        const now = new Date().toISOString();
-        if ((!promo.starts_at || promo.starts_at <= now) && (!promo.ends_at || promo.ends_at >= now)) {
-          if (promo.type === 'percent') {
-            discountAmount = Math.round(subtotal * promo.value / 100);
-          } else if (promo.type === 'fixed') {
-            discountAmount = promo.value;
-          } else if (promo.type === 'free_delivery') {
-            discountAmount = delivery_fee;
-          }
-        }
-      }
-    }
-
-    const calculatedTotal = Math.max(subtotal + delivery_fee - discountAmount, 0);
-
-    // Generate order code
-    const code = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
-
-    // Insert order
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        tenant_id,
-        store_id,
-        customer_id: authData.user.id,
-        code,
-        customer_name,
-        customer_phone,
-        delivery_address,
-        delivery_zone: delivery_zone || null,
-        delivery_window: delivery_window || null,
-        payment_method,
-        subtotal,
-        delivery_fee,
-        discount: discountAmount,
-        status: 'placed',
-      })
-      .select('id, code')
+      .eq('code', coupon_code)
+      .eq('active', true)
       .single();
 
-    if (orderError) {
-      return new Response(
-        JSON.stringify({ error: 'Error al crear el pedido', details: orderError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Insert order items
-    const orderItems = lines.map((line: any) => ({
-      tenant_id,
-      order_id: order.id,
-      product_id: line.productId,
-      name: line.name,
-      quantity: line.quantity,
-      unit_price: line.unitPrice,
-    }));
-
-    await supabase.from('order_items').insert(orderItems);
-
-    // Reduce stock for each product
-    for (const line of lines) {
-      const { data: product } = await supabase
-        .from('products')
-        .select('stock')
-        .eq('id', line.productId)
-        .single();
-
-      if (product) {
-        await supabase
-          .from('products')
-          .update({ stock: Math.max(product.stock - line.quantity, 0) })
-          .eq('id', line.productId);
+    if (promo) {
+      const now = new Date().toISOString();
+      if ((!promo.starts_at || promo.starts_at <= now) && (!promo.ends_at || promo.ends_at >= now)) {
+        if (promo.type === 'percent') {
+          discountAmount = Math.round(subtotal * promo.value / 100);
+        } else if (promo.type === 'fixed') {
+          discountAmount = promo.value;
+        } else if (promo.type === 'free_delivery') {
+          discountAmount = delivery_fee;
+        }
       }
     }
+  }
 
-    // Notify customer asynchronously via WhatsApp (do not block response)
-    fetch(`${supabaseUrl}/functions/v1/send-notification`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${supabaseServiceKey}`,
-        'x-client-info': 'create-order-function'
-      },
-      body: JSON.stringify({
-        tenantId: tenant_id,
-        channel: 'whatsapp',
-        eventKey: 'order_placed',
-        recipient: normalizedPhone,
-        variables: {
-          customer_name,
-          code: order.code,
-          total: calculatedTotal.toFixed(2)
-        }
-      })
-    }).catch(() => {
-      // Notification failure should not fail order creation
-    });
+  const calculatedTotal = Math.max(subtotal + delivery_fee - discountAmount, 0);
 
+  // Generate order code
+  const code = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+
+  // Insert order
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .insert({
+      tenant_id,
+      store_id,
+      customer_id: authData.user.id,
+      code,
+      customer_name,
+      customer_phone,
+      delivery_address,
+      delivery_zone: delivery_zone || null,
+      delivery_window: delivery_window || null,
+      payment_method,
+      subtotal,
+      delivery_fee,
+      discount: discountAmount,
+      status: 'placed',
+    })
+    .select('id, code')
+    .single();
+
+  if (orderError) {
     return new Response(
-      JSON.stringify({ id: order.id, code: order.code, total: calculatedTotal }),
-      { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    return new Response(
-      JSON.stringify({ error: 'Error interno del servidor' }),
+      JSON.stringify({ error: 'Error al crear el pedido', details: orderError.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
+
+  // Insert order items
+  const orderItems = lines.map((line: any) => ({
+    tenant_id,
+    order_id: order.id,
+    product_id: line.productId,
+    name: line.name,
+    quantity: line.quantity,
+    unit_price: line.unitPrice,
+  }));
+
+  await supabase.from('order_items').insert(orderItems);
+
+  // Reduce stock for each product
+  for (const line of lines) {
+    const { data: product } = await supabase
+      .from('products')
+      .select('stock')
+      .eq('id', line.productId)
+      .single();
+
+    if (product) {
+      await supabase
+        .from('products')
+        .update({ stock: Math.max(product.stock - line.quantity, 0) })
+        .eq('id', line.productId);
+    }
+  }
+
+  // Notify customer asynchronously via WhatsApp (do not block response)
+  fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${supabaseServiceKey}`,
+      'x-client-info': 'create-order-function'
+    },
+    body: JSON.stringify({
+      tenantId: tenant_id,
+      channel: 'whatsapp',
+      eventKey: 'order_placed',
+      recipient: normalizedPhone,
+      variables: {
+        customer_name,
+        code: order.code,
+        total: calculatedTotal.toFixed(2)
+      }
+    })
+  }).catch(() => {
+    // Notification failure should not fail order creation
+  });
+
+  return new Response(
+    JSON.stringify({ id: order.id, code: order.code, total: calculatedTotal }),
+    { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+serve(async (req) => {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  return handleRequest(req, { supabase });
 });
