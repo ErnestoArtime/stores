@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { CatalogFacade, ToastService } from '@stores/data-access';
+import { CatalogFacade, ToastService, SupabaseClientService } from '@stores/data-access';
 import { AdminShellComponent, PageHeaderComponent } from '@stores/shared/shell';
 import { Product } from '@stores/domain';
 
@@ -15,7 +15,7 @@ import { Product } from '@stores/domain';
       <stores-page-header section="Catalogo" [title]="isEditing() ? 'Editar producto' : 'Nuevo producto'" [hasActions]="true">
         <div actions>
           <a routerLink="/catalog/products" class="btn">Cancelar</a>
-          <button type="button" class="primary" (click)="save()" [disabled]="saving()">
+          <button type="button" class="primary" (click)="save()" [disabled]="saving() || uploadingImage()">
             {{ saving() ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
@@ -67,8 +67,10 @@ import { Product } from '@stores/domain';
             </select>
           </div>
           <div class="field">
-            <label for="imageUrl">URL de imagen</label>
-            <input id="imageUrl" [(ngModel)]="product.imageUrl" placeholder="https://..." />
+            <label for="image">Imagen del producto</label>
+            <input id="image" type="file" accept="image/*" (change)="uploadImage($event)" [disabled]="uploadingImage()" />
+            <div *ngIf="uploadingImage()" class="upload-status">Subiendo...</div>
+            <img *ngIf="product.imageUrl" [src]="product.imageUrl" alt="Preview" class="image-preview" />
           </div>
           <div class="field">
             <label for="status">Estado</label>
@@ -96,6 +98,9 @@ import { Product } from '@stores/domain';
     label { display: block; margin-bottom: 6px; color: #374151; font-size: 0.84rem; font-weight: 600; }
     input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; font-family: inherit; resize: vertical; }
     input:focus, select:focus, textarea:focus { outline: none; border-color: #0f766e; }
+    input[type=file] { padding: 6px; }
+    .image-preview { max-width: 120px; border-radius: 4px; border: 1px solid #d1d5db; margin-top: 8px; }
+    .upload-status { font-size: 0.8rem; color: #0f766e; font-weight: 600; margin-top: 4px; }
     .error { padding: 12px; border-radius: 8px; background: #fef2f2; color: #b91c1c; font-size: 0.84rem; }
     a { text-decoration: none; color: inherit; }
     @media (max-width: 980px) { .form-grid { grid-template-columns: 1fr; } }
@@ -103,12 +108,14 @@ import { Product } from '@stores/domain';
 })
 export class ProductFormPage implements OnInit {
   readonly facade = inject(CatalogFacade);
+  private readonly supabase = inject(SupabaseClientService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
 
   readonly isEditing = signal(false);
   readonly saving = signal(false);
+  readonly uploadingImage = signal(false);
   readonly error = signal('');
   private productId = '';
 
@@ -144,6 +151,28 @@ export class ProductFormPage implements OnInit {
           status: existing.status
         };
       }
+    }
+  }
+
+  async uploadImage(event: Event): Promise<void> {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    this.uploadingImage.set(true);
+    try {
+      const fileName = `${this.facade.tenant().id}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+      const { error } = await this.supabase.client.storage.from('products').upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data } = this.supabase.client.storage.from('products').getPublicUrl(fileName);
+      this.product.imageUrl = data.publicUrl;
+      this.toast.success('Imagen subida correctamente');
+    } catch {
+      this.toast.error('Error al subir la imagen.');
+    } finally {
+      this.uploadingImage.set(false);
+      (event.target as HTMLInputElement).value = '';
     }
   }
 

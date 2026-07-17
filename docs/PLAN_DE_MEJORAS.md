@@ -99,6 +99,10 @@ Llevar la plataforma a un estado productivo estable, con datos reales, tests, se
 | 2026-07-15 | Pedidos | Filtros por búsqueda, estado y fecha |
 | 2026-07-15 | Servicios | Estados de loading/error en store, dispatch, marketing |
 | 2026-07-15 | Tests | Tests unitarios para CartService |
+| 2026-07-17 | Edge Functions | Tests de integración con Deno para create-order, send-notification y process-product-import |
+| 2026-07-17 | Dashboard | Métricas reales desde Supabase con loadKpis |
+| 2026-07-17 | Seguridad | Rate limiting y validación de entrada en Edge Functions |
+| 2026-07-17 | Storage | Subida de imágenes de producto a Supabase Storage |
 
 ---
 
