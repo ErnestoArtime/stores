@@ -1,4 +1,4 @@
-import { Signal, computed } from '@angular/core';
+import { Signal, computed, signal } from '@angular/core';
 import { Order, OrderStatus, Product, StoreLocation } from '@stores/domain';
 import { SupabaseClientService } from './supabase.client';
 
@@ -34,6 +34,14 @@ export class DashboardService {
   readonly products: Signal<Product[]>;
   readonly stores: Signal<StoreLocation[]>;
 
+  private readonly _realOrders = signal<Order[] | null>(null);
+  private readonly _realProducts = signal<Product[] | null>(null);
+  private readonly _realStores = signal<StoreLocation[] | null>(null);
+
+  private readonly effectiveOrders = computed(() => this._realOrders() ?? this.orders());
+  private readonly effectiveProducts = computed(() => this._realProducts() ?? this.products());
+  private readonly effectiveStores = computed(() => this._realStores() ?? this.stores());
+
   constructor(
     private readonly supabase: SupabaseClientService,
     orders: Signal<Order[]>,
@@ -45,12 +53,96 @@ export class DashboardService {
     this.stores = stores;
   }
 
-  readonly activeProducts = computed(() => this.products().filter((p) => p.status === 'active').length);
-  readonly lowStockProducts = computed(() => this.products().filter((p) => p.status === 'active' && p.stock <= LOW_STOCK_THRESHOLD).length);
+  async loadKpis(tenantId: string): Promise<void> {
+    if (!this.supabase.configured) return;
+
+    const [ordersRes, productsRes, storesRes] = await Promise.all([
+      this.supabase.client.from('orders').select('*, lines:order_items(*)').eq('tenant_id', tenantId),
+      this.supabase.client.from('products').select('*').eq('tenant_id', tenantId),
+      this.supabase.client.from('store_locations').select('*').eq('tenant_id', tenantId)
+    ]);
+
+    if (ordersRes.data) {
+      this._realOrders.set(
+        ordersRes.data.map((o: any) => ({
+          id: o.id,
+          tenantId: o.tenant_id,
+          storeId: o.store_id,
+          customerId: o.customer_id,
+          code: o.code,
+          customerName: o.customer_name,
+          customerPhone: o.customer_phone,
+          deliveryAddress: o.delivery_address,
+          deliveryZone: o.delivery_zone ?? '',
+          deliveryWindow: o.delivery_window ?? '',
+          status: o.status,
+          paymentMethod: o.payment_method,
+          subtotal: Number(o.subtotal),
+          deliveryFee: Number(o.delivery_fee),
+          total: Number(o.total),
+          discount: Number(o.discount || 0),
+          notes: o.notes ?? '',
+          placedAt: o.placed_at,
+          assignedCourierId: o.assigned_courier_id,
+          lines: (o.lines || []).map((l: any) => ({
+            productId: l.product_id,
+            name: l.name,
+            quantity: l.quantity,
+            unitPrice: Number(l.unit_price),
+            imageUrl: l.image_url ?? ''
+          }))
+        }))
+      );
+    }
+
+    if (productsRes.data) {
+      this._realProducts.set(
+        productsRes.data.map((p: any) => ({
+          id: p.id,
+          tenantId: p.tenant_id,
+          storeId: p.store_id,
+          categoryId: p.category_id,
+          sku: p.sku,
+          name: p.name,
+          description: p.description,
+          imageUrl: p.image_url ?? '',
+          price: Number(p.price),
+          compareAtPrice: p.compare_at_price ? Number(p.compare_at_price) : undefined,
+          stock: p.stock,
+          unit: p.unit,
+          status: p.status,
+          tags: p.tags ?? []
+        }))
+      );
+    }
+
+    if (storesRes.data) {
+      this._realStores.set(
+        storesRes.data.map((s: any) => ({
+          id: s.id,
+          tenantId: s.tenant_id,
+          name: s.name,
+          type: s.type,
+          address: s.address,
+          city: s.city,
+          municipality: s.municipality,
+          phone: s.phone ?? '',
+          openNow: s.open_now,
+          deliveryMinutes: s.delivery_minutes,
+          rating: Number(s.rating),
+          coverUrl: s.cover_url ?? '',
+          fulfillment: s.fulfillment
+        }))
+      );
+    }
+  }
+
+  readonly activeProducts = computed(() => this.effectiveProducts().filter((p) => p.status === 'active').length);
+  readonly lowStockProducts = computed(() => this.effectiveProducts().filter((p) => p.status === 'active' && p.stock <= LOW_STOCK_THRESHOLD).length);
 
   readonly kpis = computed<DashboardKpis>(() => {
-    const all = this.orders();
-    const referenceDate = this.supabase.configured ? new Date() : this.latestOrderDate(all);
+    const all = this.effectiveOrders();
+    const referenceDate = this.supabase.configured && this._realOrders() ? new Date() : this.latestOrderDate(all);
     const today = startOfDay(referenceDate);
 
     const todayOrders = all.filter((o) => isSameDay(new Date(o.placedAt), today));
@@ -129,7 +221,7 @@ export class DashboardService {
   });
 
   private averageDeliveryMinutes(): number {
-    const stores = this.stores();
+    const stores = this.effectiveStores();
     if (!stores.length) return 0;
     return Math.round(stores.reduce((sum, s) => sum + s.deliveryMinutes, 0) / stores.length);
   }

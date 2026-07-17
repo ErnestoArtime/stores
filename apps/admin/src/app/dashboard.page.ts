@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed } from '@angular/core';
+import { Component, computed, OnInit } from '@angular/core';
 import { CatalogFacade } from '@stores/data-access';
 import { AdminShellComponent, PageHeaderComponent } from '@stores/shared/shell';
 import { ORDER_STATUS_LABELS, MoneyPipe } from '@stores/ui';
@@ -286,7 +286,7 @@ function computeStatusBreakdown(
   `,
   styleUrl: './dashboard.page.scss'
 })
-export class DashboardPage {
+export class DashboardPage implements OnInit {
   readonly status = ORDER_STATUS_LABELS;
   readonly csvPreview: ReturnType<CatalogFacade['previewProductCsv']>;
   readonly maxRevenue = computed(() => computeMaxRevenue(this.facade.kpis().revenueByDay));
@@ -296,5 +296,9 @@ export class DashboardPage {
     this.csvPreview = facade.previewProductCsv(
       'sku,name,price,stock,unit\nALM-010,Frijoles negros,950,42,2 lb\nASE-088,Jabon de lavar,320,0,unidad\nBAD,,xx,-1,unidad'
     );
+  }
+
+  ngOnInit(): void {
+    this.facade.loadDashboardKpis();
   }
 }

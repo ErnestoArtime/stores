@@ -39,6 +39,10 @@ export class CatalogFacade {
   readonly filteredOrders = this.orderService.filteredOrders;
   readonly summary = this.orderService.summary;
   readonly kpis = this.dashboardService.kpis;
+
+  async loadDashboardKpis(): Promise<void> {
+    return this.dashboardService.loadKpis(this.tenant().id);
+  }
   readonly deliveryZones = this.dispatchService.deliveryZones;
   readonly promotions = this.marketingService.promotions;
   readonly couriers = this.dispatchService.couriers;
