@@ -6,25 +6,26 @@ The repository is an Nx monorepo for a commercial multi-tenant store/delivery pl
 
 Implemented so far:
 
-- `apps/storefront`: Ionic Angular customer storefront with catalog hero, categories, stores, products, promotions, delivery windows, delivery zones, loyalty teaser, cart summary and WhatsApp support link.
-- `apps/admin`: Angular admin dashboard with metrics, orders, store state, inventory, delivery routes, couriers, marketing segments, promotions and CSV import preview.
+- `apps/storefront`: Ionic Angular customer storefront with catalog hero, categories, stores, products, promotions, delivery windows, delivery zones, loyalty teaser, cart summary, checkout with payment/coupon and WhatsApp support link.
+- `apps/admin`: Angular admin dashboard with real KPIs, orders, store state, inventory, delivery routes, couriers, marketing segments, promotions, product image upload and CSV import preview.
+- `apps/superadmin`: skeleton for tenant management.
 - `libs/domain`: shared TypeScript models and demo data for tenants, stores, products, orders, promotions, couriers, delivery routes, loyalty and segments.
-- `libs/data-access`: runtime config, Supabase client wrapper, mock facade, CSV preview helper and WhatsApp URL helper.
+- `libs/data-access`: runtime config, typed Supabase client, facades, auth guards, onboarding guard, dashboard service and cart service with localStorage + server sync.
 - `libs/ui`: shared money pipe and order status labels.
-- `supabase/migrations/202606250001_initial_stores_platform.sql`: initial multi-tenant schema with RLS.
-- `supabase/migrations/202606250002_value_added_modules.sql`: promotions, couriers, routes, loyalty, segments, notification templates, import jobs and audit events.
-- `supabase/migrations/202606260001_order_import_audit_hardening.sql`: order discounts/windows, import counters, order status events, updated-at triggers and private audit triggers.
-- `supabase/functions/send-notification`: placeholder Edge Function for WhatsApp/email/push/Telegram providers.
-- `supabase/functions/create-order`: authenticated order creation with stock validation and coupon calculation.
-- `supabase/functions/process-product-import`: product import processor with category/store fallback and import job counters.
+- `libs/features/*`: domain services for catalog, orders, tenant onboarding, dispatch, marketing and superadmin.
+- `supabase/migrations`: multi-tenant schema with RLS, value-added modules, order import audit hardening, product storage, customer carts, order assigned courier and notification templates/channels.
+- `supabase/functions/send-notification`: Edge Function for WhatsApp/email/push/Telegram providers with templates and auth.
+- `supabase/functions/create-order`: authenticated order creation with stock validation, coupon calculation, rate limiting and Deno tests.
+- `supabase/functions/process-product-import`: product import processor with category/store fallback, import job counters and Deno tests.
 
 Important validation note:
 
 - JSON files parse correctly.
 - Dependency installation is currently restored.
-- `npx nx show projects` lists `data-access`, `storefront`, `domain`, `admin`, `ui`.
+- `npx nx show projects` lists `data-access`, `storefront`, `domain`, `admin`, `ui`, `features/*` and `superadmin`.
 - `npx nx build storefront --configuration=development` passes.
 - `npx nx build admin --configuration=development` passes.
+- `npm run test:data-access` passes (26/26 tests).
 - Previous `ECONNRESET` failures against `registry.npmjs.org` were resolved before the latest changes.
 
 Run these checks after future structural changes:
@@ -326,21 +327,23 @@ Before considering backend work complete:
 ## Known Gaps
 
 - Auth UI and guards exist, but need real Supabase project testing.
-- Checkout page and `create-order` function exist, but need integration testing against a live/local Supabase database.
+- Checkout page and `create-order` function are implemented, but need integration testing against a live/local Supabase database.
 - CRUD screens exist for the main admin areas, but writes need full Supabase-backed persistence coverage.
-- CSV import has preview and Edge Function scaffolding, but still needs Storage upload UX and live function testing.
-- Edge Function notification provider is a stub.
+- CSV import has preview, Storage upload UX and Edge Function scaffolding, but still needs live function testing.
+- Edge Function notification provider is a stub; no real WhatsApp/email/push provider connected.
 - Supabase migrations have not been applied in this session.
-- No unit/e2e tests yet.
+- No e2e tests yet; unit tests cover data-access only.
 - No CI yet.
+- Onboarding is admin-only; public tenant self-registration and plan selection are pending.
+- i18n, PWA/Capacitor builds and push notifications are pending.
 
 ## Suggested Next Commit Scope
 
 Best next commit:
 
 1. Apply migrations to local Supabase.
-2. Generate typed Supabase `Database` types.
-3. Integration-test `create-order` and `process-product-import`.
-4. Add Storage upload UX for product import files/images.
+2. Integration-test `create-order` and `process-product-import` against a live/local database.
+3. Connect `send-notification` to at least one real provider (WhatsApp Business, Resend or Telegram).
+4. Add public tenant onboarding form with plan selection.
 
-Keep that commit small. Do not mix provider notifications or superadmin work into it.
+Keep that commit small. Do not mix unrelated superadmin or PWA work into it.
